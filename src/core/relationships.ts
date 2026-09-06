@@ -107,3 +107,19 @@ export function relationship(code: RelCode): Relationship {
   if (!found) throw new Error(`unknown relationship: ${code}`);
   return found;
 }
+
+/**
+ * The one place the member-count rule lives: compared against both
+ * minMembers and maxMembers, so a relationship whose min differs from its
+ * max is still handled correctly, not just the exactly-two and
+ * exactly-three shapes RELATIONSHIPS uses today. arcTree.ts's canRelate
+ * and relabelArc, and validate.ts's validateDoc, all call this rather than
+ * each restating the boundary check.
+ */
+export function memberCountFit(rel: Relationship, n: number): { ok: boolean; reason?: string } {
+  const fits = n >= rel.minMembers && (rel.maxMembers === null || n <= rel.maxMembers);
+  if (fits) return { ok: true };
+  if (rel.maxMembers === null) return { ok: false, reason: `Takes ${rel.minMembers} or more` };
+  if (rel.maxMembers === rel.minMembers) return { ok: false, reason: `Takes exactly ${rel.minMembers}` };
+  return { ok: false, reason: `Takes ${rel.minMembers} to ${rel.maxMembers}` };
+}

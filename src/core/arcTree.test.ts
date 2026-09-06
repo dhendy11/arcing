@@ -8,6 +8,7 @@ import {
   setCircled,
 } from "./arcTree";
 import { newArcDoc } from "./doc";
+import { CIRCLING_CODES, RELATIONSHIPS } from "./relationships";
 import { splitAt } from "./split";
 import type { ArcDoc, Member } from "./types";
 import { validateDoc } from "./validate";
@@ -36,14 +37,13 @@ test("units that are not neighbours keep the palette closed", () => {
   });
 });
 
-test("three neighbours fit only Series, Progression, Alternative and Bilateral", () => {
+test("three neighbours' fit follows every relationship's own member-count rule", () => {
   const doc = fiveProps();
   const three = [prop("p1"), prop("p2"), prop("p3")];
-  for (const code of ["S", "P", "A", "BL"] as const) {
-    expect(canRelate(doc, three, code).ok).toBe(true);
-  }
-  for (const code of ["G", "Inf", "AcPur", "NegPos", "Csv", "SitR", "T", "L", "Cf"] as const) {
-    expect(canRelate(doc, three, code)).toEqual({ ok: false, reason: "Takes exactly 2" });
+  for (const rel of RELATIONSHIPS) {
+    const fits = rel.maxMembers === null ? three.length >= rel.minMembers : three.length === rel.minMembers;
+    const expected = fits ? { ok: true } : { ok: false, reason: `Takes exactly ${rel.minMembers}` };
+    expect(canRelate(doc, three, rel.code)).toEqual(expected);
   }
 });
 
@@ -75,7 +75,7 @@ test("members are stored in passage order however they were selected", () => {
   expect(doc.arcs[0].members).toEqual([prop("p1"), prop("p2")]);
 });
 
-test("arc ids do not reuse a dissolved id", () => {
+test("dissolving an arc does not free its id while another arc holds a higher number", () => {
   let doc = createArc(fiveProps(), [prop("p1"), prop("p2")], "G");
   doc = createArc(doc, [prop("p3"), prop("p4")], "G");
   doc = dissolveArc(doc, "a1");
@@ -117,6 +117,15 @@ test("circling a relationship that does not circle is refused", () => {
   expect(() => setCircled(doc, "a1", 0)).toThrow(/does not take a circled member/);
 });
 
+test("setCircled accepts every circling relationship and refuses a non-circling one", () => {
+  for (const code of CIRCLING_CODES) {
+    const doc = createArc(fiveProps(), [prop("p1"), prop("p2")], code);
+    expect(setCircled(doc, "a1", 0).arcs[0].circled).toBe(0);
+  }
+  const doc = createArc(fiveProps(), [prop("p1"), prop("p2")], "G");
+  expect(() => setCircled(doc, "a1", 0)).toThrow(/does not take a circled member/);
+});
+
 test("dissolving an arc returns its members to the top level", () => {
   let doc = createArc(fiveProps(), [prop("p1"), prop("p2")], "G");
   doc = dissolveArc(doc, "a1");
@@ -130,4 +139,12 @@ test("dissolving a nested arc dissolves the arcs above it too", () => {
   doc = createArc(doc, [arc("a1"), prop("p3")], "G");
   expect(arcsDissolvedByDissolve(doc, "a1")).toEqual(["a1", "a2"]);
   expect(dissolveArc(doc, "a1").arcs).toEqual([]);
+});
+
+test("dissolving the innermost of three nested arcs dissolves the arcs above it too", () => {
+  let doc = createArc(fiveProps(), [prop("p1"), prop("p2")], "NegPos");
+  doc = createArc(doc, [arc("a1"), prop("p3")], "G");
+  doc = createArc(doc, [arc("a2"), prop("p4")], "G");
+  expect(arcsDissolvedByDissolve(doc, "a1")).toEqual(["a1", "a2", "a3"]);
+  expect(validateDoc(dissolveArc(doc, "a1"))).toEqual([]);
 });

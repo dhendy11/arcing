@@ -1,4 +1,4 @@
-import { relationship, RELATIONSHIPS } from "./relationships";
+import { memberCountFit, relationship, RELATIONSHIPS } from "./relationships";
 import { deriveStatus } from "./status";
 import { arcById, memberKey, propIndexRange } from "./tree";
 import { SCHEMA_VERSION, type ArcDoc, type Member } from "./types";
@@ -60,10 +60,11 @@ export function validateDoc(doc: ArcDoc): Violation[] {
       push("unknown_relationship", `${arc.id} has an unrecognized relationship code ${arc.rel}`);
     } else {
       const rel = relationship(arc.rel);
-      const okCount = rel.maxMembers === null ? n >= rel.minMembers : n === rel.minMembers;
-      if (!okCount) {
-        const want = rel.maxMembers === null ? `${rel.minMembers} or more` : `exactly ${rel.minMembers}`;
-        push("member_count", `${arc.id} (${rel.name}) takes ${want} members, found ${n}`);
+      const fit = memberCountFit(rel, n);
+      if (!fit.ok) {
+        const reason = fit.reason ?? "";
+        const want = reason.charAt(0).toLowerCase() + reason.slice(1);
+        push("member_count", `${arc.id} (${rel.name}) ${want} members, found ${n}`);
       }
 
       if (!rel.requiresCircle && arc.circled !== null) {

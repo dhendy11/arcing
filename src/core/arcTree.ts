@@ -1,4 +1,4 @@
-import { relationship, type RelCode } from "./relationships";
+import { memberCountFit, relationship, type RelCode } from "./relationships";
 import { deriveStatus } from "./status";
 import { ancestorsOfArc, memberKey, propIndexRange, topLevelUnits } from "./tree";
 import type { ArcDoc, ArcNode, Member } from "./types";
@@ -22,14 +22,15 @@ export function canRelate(doc: ArcDoc, units: Member[], code: RelCode): Fit {
   if (!unitsAreAdjacentTopLevel(doc, units)) return { ok: false, reason: "Select neighbours" };
 
   const rel = relationship(code);
-  if (rel.maxMembers === null) {
-    return units.length >= rel.minMembers ? { ok: true } : { ok: false, reason: `Takes ${rel.minMembers} or more` };
-  }
-  if (units.length !== rel.minMembers) return { ok: false, reason: `Takes exactly ${rel.minMembers}` };
-  return { ok: true };
+  return memberCountFit(rel, units.length);
 }
 
-/** Never reuses an id, so a dissolved arc's id cannot come back on a new arc. */
+/**
+ * Derived from the highest suffix currently in doc.arcs, so a used id will
+ * not repeat while any arc still holds it. Once every arc has been
+ * dissolved, numbering can restart at a1, since nothing live holds the old
+ * id any more.
+ */
 export function nextArcId(doc: ArcDoc): string {
   const used = doc.arcs.map((a) => Number(a.id.slice(1))).filter((n) => Number.isFinite(n));
   return `a${Math.max(0, ...used) + 1}`;
@@ -62,11 +63,8 @@ export function relabelArc(doc: ArcDoc, arcId: string, code: RelCode): ArcDoc {
   if (!target) throw new Error(`unknown arc ${arcId}`);
   const rel = relationship(code);
   const n = target.members.length;
-  const okCount = rel.maxMembers === null ? n >= rel.minMembers : n === rel.minMembers;
-  if (!okCount) {
-    const want = rel.maxMembers === null ? `Takes ${rel.minMembers} or more` : `Takes exactly ${rel.minMembers}`;
-    throw new Error(want);
-  }
+  const fit = memberCountFit(rel, n);
+  if (!fit.ok) throw new Error(fit.reason ?? "member count mismatch");
   const circled = rel.requiresCircle && target.circled !== null && target.circled < n ? target.circled : null;
   return withStatus(doc, doc.arcs.map((a) => (a.id === arcId ? { ...a, rel: code, circled } : a)));
 }
