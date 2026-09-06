@@ -1,16 +1,9 @@
 import { randomUUID } from "node:crypto";
 import { mkdir, readdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
-import type { ArcDoc, ArcStatus } from "@/core/types";
+import type { ArcDoc, ArcSummary } from "@/core/types";
 
-export interface ArcSummary {
-  id: string;
-  reference: string;
-  status: ArcStatus;
-  createdAt: string;
-  updatedAt: string;
-  mainPoint: string;
-}
+export type { ArcSummary };
 
 /** Read at call time, not at module load, so tests can point it at a tmpdir. */
 export function arcsDir(): string {

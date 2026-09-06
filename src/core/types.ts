@@ -70,3 +70,13 @@ export interface ArcDoc {
   arcs: ArcNode[];
   summary: Summary;
 }
+
+/** One row of the series list. */
+export interface ArcSummary {
+  id: string;
+  reference: string;
+  status: ArcStatus;
+  createdAt: string;
+  updatedAt: string;
+  mainPoint: string;
+}
