@@ -1,6 +1,9 @@
 import { ESV_NOTICE, ESV_URL } from "@/core/tokens";
 
 const SPLIT_AT = ESV_NOTICE.indexOf("ESV");
+if (SPLIT_AT === -1) {
+  throw new Error("ESV_NOTICE no longer contains the word ESV; EsvNotice cannot link it.");
+}
 
 /**
  * Crossway's licence requires the notice on every page using the text, with

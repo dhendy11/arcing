@@ -87,7 +87,7 @@ test("the Summarize tab is closed until one arc spans the passage", () => {
 
 test("the ESV notice appears verbatim under a view showing passage text", () => {
   frame({ showNotice: true });
-  expect(screen.getByTestId("esv-notice")).toHaveTextContent(ESV_NOTICE);
+  expect(screen.getByTestId("esv-notice").textContent).toBe(ESV_NOTICE);
   expect(screen.getByRole("link", { name: "ESV" })).toHaveAttribute("href", "https://www.esv.org");
 });
 
@@ -118,10 +118,27 @@ test("the keyboard shortcut also undoes and redoes", async () => {
   expect(props.onRedo).toHaveBeenCalledTimes(1);
 });
 
+test("the keyboard shortcut is inert when the corresponding button is disabled", async () => {
+  const props = frame({ canUndo: false, canRedo: false });
+  await userEvent.keyboard("{Meta>}z{/Meta}");
+  expect(props.onUndo).not.toHaveBeenCalled();
+  await userEvent.keyboard("{Shift>}{Meta>}z{/Meta}{/Shift}");
+  expect(props.onRedo).not.toHaveBeenCalled();
+});
+
+test("the keyboard shortcut does not undo while typing in a field", async () => {
+  const props = frame({ children: <input aria-label="Note" /> });
+  await userEvent.click(screen.getByLabelText("Note"));
+  await userEvent.keyboard("{Meta>}z{/Meta}");
+  expect(props.onUndo).not.toHaveBeenCalled();
+});
+
 test("a conflict shows a banner offering Reload and Overwrite", async () => {
   const props = frame({ saveState: "conflict", conflictDoc: { ...doc(), rev: 7 } });
   const banner = screen.getByRole("alert");
-  expect(banner).toHaveTextContent("This arc changed somewhere else.");
+  expect(banner).toHaveTextContent(
+    "This arc changed somewhere else. Reload drops the edits made on this device, and Overwrite replaces the copy saved elsewhere."
+  );
   await userEvent.click(screen.getByRole("button", { name: "Reload" }));
   expect(props.onReload).toHaveBeenCalledTimes(1);
   await userEvent.click(screen.getByRole("button", { name: "Overwrite" }));

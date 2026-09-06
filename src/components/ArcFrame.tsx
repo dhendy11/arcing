@@ -62,13 +62,20 @@ export function ArcFrame({
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent): void {
       if (event.key.toLowerCase() !== "z" || !(event.metaKey || event.ctrlKey)) return;
+      const target = event.target as HTMLElement | null;
+      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) {
+        return;
+      }
       event.preventDefault();
-      if (event.shiftKey) onRedo();
-      else onUndo();
+      if (event.shiftKey) {
+        if (canRedo) onRedo();
+      } else if (canUndo) {
+        onUndo();
+      }
     }
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [onUndo, onRedo]);
+  }, [onUndo, onRedo, canUndo, canRedo]);
 
   return (
     <div className="arc-frame">
@@ -76,7 +83,7 @@ export function ArcFrame({
         <button type="button" onClick={onSeries}>
           Series
         </button>
-        <span className="reference">{reference}</span>
+        <span className="frame-reference">{reference}</span>
 
         <nav role="tablist" aria-label="Arc steps">
           {TABS.map((t) => (
@@ -104,7 +111,10 @@ export function ArcFrame({
 
       {conflictDoc === null ? null : (
         <div role="alert" className="banner banner-conflict">
-          <span>This arc changed somewhere else.</span>
+          <span>
+            This arc changed somewhere else. Reload drops the edits made on this device, and
+            Overwrite replaces the copy saved elsewhere.
+          </span>
           <button type="button" onClick={onReload}>
             Reload
           </button>
@@ -115,7 +125,7 @@ export function ArcFrame({
       )}
 
       {mirrored === null ? null : (
-        <div className="banner banner-mirror">
+        <div role="alert" className="banner banner-mirror">
           <span>There are unsaved changes on this device.</span>
           <button type="button" onClick={onRestore}>
             Restore
