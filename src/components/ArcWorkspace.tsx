@@ -74,10 +74,14 @@ export function ArcWorkspace({ id, children }: { id: string; children: ReactNode
         // user did changed: the saved copy differs only in rev and
         // updatedAt. Left unpaused, every successful save pushes a
         // duplicate step, so the first Undo after a save is a no-op that
-        // then resends a stale rev and raises a conflict.
+        // then resends a stale rev and raises a conflict. latestServerRev
+        // is updated in the same write: it is what onUndo/onRedo re-stamp
+        // a restored snapshot with, since the snapshot's own embedded rev
+        // is whatever it was when that history step was captured, not
+        // what the server holds now.
         const temporal = useArcStore.temporal.getState();
         temporal.pause();
-        useArcStore.setState({ doc: saved });
+        useArcStore.setState({ doc: saved, latestServerRev: saved.rev });
         temporal.resume();
       },
       onConflict: (serverDoc) => useArcStore.getState().setConflictDoc(serverDoc),
@@ -116,6 +120,18 @@ export function ArcWorkspace({ id, children }: { id: string; children: ReactNode
     autosaveRef.current?.changed(next);
   }
 
+  /**
+   * What undo/redo hand to autosave. `restored.rev` is whatever it was when
+   * that history step was captured, which the server may since have moved
+   * past (see latestServerRev's doc comment in store.ts); only `rev` is
+   * re-stamped, so the restored content itself is sent exactly as undo or
+   * redo produced it.
+   */
+  function forSave(restored: ArcDoc): ArcDoc {
+    const latestServerRev = useArcStore.getState().latestServerRev;
+    return latestServerRev === null ? restored : { ...restored, rev: latestServerRev };
+  }
+
   if (!doc) return <main className="page">Loading</main>;
 
   return (
@@ -146,12 +162,12 @@ export function ArcWorkspace({ id, children }: { id: string; children: ReactNode
         onUndo={() => {
           undo();
           const current = useArcStore.getState().doc;
-          if (current) autosaveRef.current?.changed(current);
+          if (current) autosaveRef.current?.changed(forSave(current));
         }}
         onRedo={() => {
           redo();
           const current = useArcStore.getState().doc;
-          if (current) autosaveRef.current?.changed(current);
+          if (current) autosaveRef.current?.changed(forSave(current));
         }}
         showNotice={tab !== "summarize"}
         conflictDoc={conflictDoc}

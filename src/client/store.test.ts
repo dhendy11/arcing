@@ -21,7 +21,7 @@ function fresh(): ArcDoc {
 }
 
 beforeEach(() => {
-  useArcStore.setState({ doc: null, saveState: "saved", selection: [], conflictDoc: null });
+  useArcStore.setState({ doc: null, saveState: "saved", selection: [], conflictDoc: null, latestServerRev: null });
   clearHistory();
 });
 
@@ -73,7 +73,7 @@ test("pausing the temporal store around a save write does not add an undo step",
   const saved: ArcDoc = { ...(useArcStore.getState().doc as ArcDoc), rev: 2 };
   const temporal = useArcStore.temporal.getState();
   temporal.pause();
-  useArcStore.setState({ doc: saved });
+  useArcStore.setState({ doc: saved, latestServerRev: 2 });
   temporal.resume();
 
   expect(historyDepth()).toBe(1);
@@ -82,6 +82,42 @@ test("pausing the temporal store around a save write does not add an undo step",
   undo();
   expect(useArcStore.getState().doc?.propositions).toHaveLength(1);
   expect(historyDepth()).toBe(0);
+});
+
+test("undo restamps the restored rev to the latest server-confirmed rev, not the undone-to rev", () => {
+  useArcStore.getState().loadArc(fresh());
+  expect(useArcStore.getState().latestServerRev).toBe(1);
+
+  useArcStore.getState().editDoc(splitAt(fresh(), 4));
+  expect(useArcStore.getState().doc?.rev).toBe(1); // edits never bump rev locally
+
+  // Simulate the save completing: the server confirms rev 2, the same
+  // pause/setState/resume write onSaved performs.
+  const saved: ArcDoc = { ...(useArcStore.getState().doc as ArcDoc), rev: 2 };
+  const temporal = useArcStore.temporal.getState();
+  temporal.pause();
+  useArcStore.setState({ doc: saved, latestServerRev: 2 });
+  temporal.resume();
+
+  undo();
+  const restored = useArcStore.getState().doc as ArcDoc;
+  // The undone-to snapshot's own embedded rev is stale: it was captured
+  // before the save, so it still reads 1.
+  expect(restored.rev).toBe(1);
+  expect(restored.propositions).toHaveLength(1);
+
+  // This is exactly the re-stamp ArcWorkspace's onUndo/onRedo perform
+  // before handing the restored doc to autosave: send the tracked
+  // server-confirmed rev, not the snapshot's own, so the PUT matches what
+  // the server actually holds and does not raise a false conflict against
+  // this client's own prior save. The server side of this claim (a PUT at
+  // the matching rev succeeds, a PUT at a stale rev is a 409) is covered
+  // separately in src/server/routes.test.ts; this test is the client's
+  // half, that it computes the matching rev in the first place.
+  const latestServerRev = useArcStore.getState().latestServerRev;
+  const toSave = latestServerRev === null ? restored : { ...restored, rev: latestServerRev };
+  expect(toSave.rev).toBe(2);
+  expect(toSave.propositions).toHaveLength(1);
 });
 
 test("leaving the arc clears the document and the history", () => {

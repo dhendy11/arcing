@@ -13,12 +13,24 @@ interface ArcState {
   selection: Member[];
   /** The server copy delivered by a 409, shown behind the conflict banner. */
   conflictDoc: ArcDoc | null;
+  /**
+   * The rev the server last actually confirmed, tracked separately from
+   * `doc.rev`. `rev` is a server concurrency token, not user content: undo
+   * and redo restore a past CONTENT snapshot whose own embedded `rev` field
+   * is whatever it was at the time that snapshot was captured, which can be
+   * stale the moment a save completes in between. Re-stamping a
+   * to-be-saved doc with this field, rather than trusting the restored
+   * snapshot's own `rev`, is what keeps an ordinary undo from resending a
+   * stale rev and tripping a conflict against this client's own save.
+   */
+  latestServerRev: number | null;
   loadArc: (doc: ArcDoc) => void;
   editDoc: (doc: ArcDoc) => void;
   leaveArc: () => void;
   setSaveState: (state: SaveState) => void;
   setSelection: (selection: Member[]) => void;
   setConflictDoc: (doc: ArcDoc | null) => void;
+  setLatestServerRev: (rev: number | null) => void;
 }
 
 export const useArcStore = create<ArcState>()(
@@ -28,18 +40,20 @@ export const useArcStore = create<ArcState>()(
       saveState: "saved",
       selection: [],
       conflictDoc: null,
+      latestServerRev: null,
       loadArc: (doc) => {
-        set({ doc, selection: [], conflictDoc: null, saveState: "saved" });
+        set({ doc, selection: [], conflictDoc: null, saveState: "saved", latestServerRev: doc.rev });
         clearHistory();
       },
       editDoc: (doc) => set({ doc }),
       leaveArc: () => {
-        set({ doc: null, selection: [], conflictDoc: null, saveState: "saved" });
+        set({ doc: null, selection: [], conflictDoc: null, saveState: "saved", latestServerRev: null });
         clearHistory();
       },
       setSaveState: (saveState) => set({ saveState }),
       setSelection: (selection) => set({ selection }),
       setConflictDoc: (conflictDoc) => set({ conflictDoc }),
+      setLatestServerRev: (latestServerRev) => set({ latestServerRev }),
     }),
     {
       limit: UNDO_LIMIT,

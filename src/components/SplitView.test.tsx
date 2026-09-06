@@ -95,3 +95,28 @@ test("a rejoin that would dissolve arcs asks the same way", async () => {
   await userEvent.click(screen.getByRole("button", { name: "Rejoin proposition 2 into 1" }));
   expect(screen.getByRole("dialog", { name: "This dissolves arcs" })).toHaveTextContent("a1 (Ground)");
 });
+
+test("an autosave echo while the confirm modal is open does not dismiss it", async () => {
+  const onChange = vi.fn();
+  let doc = splitAt(fresh(), 8);
+  doc = createArc(doc, [{ kind: "prop", ref: "p1" }, { kind: "prop", ref: "p2" }], "G");
+  const { rerender } = render(<SplitView doc={doc} onChange={onChange} />);
+
+  await userEvent.click(screen.getByTestId("word-4"));
+  expect(screen.getByRole("dialog", { name: "This dissolves arcs" })).toBeInTheDocument();
+
+  // A completed autosave hands SplitView a freshly parsed doc object (new
+  // references throughout, exactly like a JSON round trip), with only rev
+  // and updatedAt actually different. That must not be mistaken for the
+  // undo/redo case the modal-reset guards against.
+  const echoed: ArcDoc = {
+    ...doc,
+    rev: doc.rev + 1,
+    updatedAt: "2026-09-05T15:00:01Z",
+    propositions: doc.propositions.map((p) => ({ ...p })),
+    arcs: doc.arcs.map((a) => ({ ...a, members: a.members.map((m) => ({ ...m })) })),
+  };
+  rerender(<SplitView doc={echoed} onChange={onChange} />);
+
+  expect(screen.getByRole("dialog", { name: "This dissolves arcs" })).toBeInTheDocument();
+});

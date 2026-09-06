@@ -22,17 +22,26 @@ type Pending = { kind: "split"; at: number; arcs: string[] } | { kind: "rejoin";
 
 export function SplitView({ doc, onChange }: { doc: ArcDoc; onChange: (doc: ArcDoc) => void }) {
   const [pending, setPending] = useState<Pending | null>(null);
-  // Tracks which doc `pending` was computed against. ArcFrame installs a
+  // Tracks the propositions/arcs `pending` was computed against, compared
+  // by VALUE, not by the whole doc's reference. ArcFrame installs a
   // document-level Undo/Redo shortcut that this component does not
   // suppress, so the document can change out from under an open confirm
   // modal; without this, "Split/Rejoin anyway" would apply a stale
-  // at/propId to a document the listed arcs may no longer describe. This
-  // is React's documented pattern for resetting state when a prop changes
-  // (adjusting state during render), not a useEffect: an effect that calls
-  // setState unconditionally in its body is a React anti-pattern the
-  // project's own lint rule (react-hooks/set-state-in-effect) rejects.
+  // at/propId to a document the listed arcs may no longer describe. A
+  // completed autosave also replaces `doc` with a freshly parsed object
+  // (a new reference every time, even when nothing but rev/updatedAt
+  // moved), so comparing `doc` itself by reference would dismiss the modal
+  // on an ordinary save tick with nothing left to actually invalidate it;
+  // JSON.stringify catches only the change that matters. This is React's
+  // documented pattern for resetting state when a prop changes (adjusting
+  // state during render), not a useEffect: an effect that calls setState
+  // unconditionally in its body is a React anti-pattern the project's own
+  // lint rule (react-hooks/set-state-in-effect) rejects.
   const [pendingForDoc, setPendingForDoc] = useState(doc);
-  if (doc !== pendingForDoc) {
+  if (
+    JSON.stringify(doc.propositions) !== JSON.stringify(pendingForDoc.propositions) ||
+    JSON.stringify(doc.arcs) !== JSON.stringify(pendingForDoc.arcs)
+  ) {
     setPendingForDoc(doc);
     setPending(null);
   }
