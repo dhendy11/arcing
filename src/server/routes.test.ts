@@ -146,15 +146,21 @@ test("an arc is fetched by id and an unknown id is a 404", async () => {
 test("a put at the loaded rev saves, bumps the rev and stamps updatedAt", async () => {
   const doc = await createPasted();
   const edited: ArcDoc = { ...doc, summary: { ...doc.summary, mainPoint: "Present your bodies." } };
+  const beforePut = new Date().toISOString();
   const res = await putArc(
     signedIn(`https://x.test/api/arcs/${doc.id}`, { method: "PUT", body: JSON.stringify(edited) }),
     { params: Promise.resolve({ id: doc.id }) }
   );
   const saved = (await res.json()) as ArcDoc;
   expect(res.status).toBe(200);
-  expect(saved.rev).toBe(2);
+  expect(saved.rev).toBe(doc.rev + 1);
   expect(saved.summary.mainPoint).toBe("Present your bodies.");
-  expect(saved.updatedAt > doc.updatedAt).toBe(true);
+  // A strict > against doc.updatedAt flakes: the PUT can land in the same
+  // millisecond as creation. beforePut is captured after creation and before
+  // the PUT, so >= against it still proves the timestamp was written during
+  // this PUT rather than carried over, without depending on sub-millisecond
+  // distinctness.
+  expect(saved.updatedAt >= beforePut).toBe(true);
 });
 
 test("a put at a stale rev is a 409 carrying the server copy", async () => {
@@ -285,4 +291,28 @@ test("an oversized reference on POST is a 400, not a 500", async () => {
     })
   );
   expect(res.status).toBe(400);
+  const list = await (await listArcs(signedIn("https://x.test/api/arcs"))).json();
+  expect(list).toEqual([]);
+});
+
+test("the reported 68-character-slug collision no longer 500s on the second post", async () => {
+  // At MAX_REFERENCE_SLUG_LENGTH's old value of 69, a 68-character slug
+  // passed the early check on the first post, then crashed writeArc on the
+  // second post's "-2" suffix (the id passed 80 characters). At the current
+  // bound of 66, 68 is rejected by the early check on its own, on EVERY
+  // post, so this never reaches writeArc at all; that is the fix. Posting
+  // twice pins the regression: neither attempt may 500 or write a file.
+  const post = () =>
+    createArcRoute(
+      signedIn("https://x.test/api/arcs", {
+        method: "POST",
+        body: JSON.stringify({ reference: "a".repeat(68), text: "one two three" }),
+      })
+    );
+  const first = await post();
+  expect(first.status).toBe(400);
+  const second = await post();
+  expect(second.status).toBe(400);
+  const list = await (await listArcs(signedIn("https://x.test/api/arcs"))).json();
+  expect(list).toEqual([]);
 });

@@ -19,13 +19,16 @@ export async function GET(req: Request, ctx: Context): Promise<Response> {
 
 /**
  * validateDoc and deriveStatus are the core layer: they assume a shaped
- * ArcDoc and index straight into its fields (propositions, arcs,
- * arc.members, summary.levels, summary.mainPoint, passage.text). A PUT body
- * is untrusted JSON, not a typed ArcDoc, so a body missing one of those would
- * throw out of validateDoc/deriveStatus as an unhandled 500 rather than the
- * 400 an invalid request should get. This checks only the shape those two
- * functions dereference without checking, before the body is cast and
- * handed to them; it is not a restatement of validateDoc's semantic rules.
+ * ArcDoc and dereference several of its fields without checking them first.
+ * This guard covers the top-level shape (propositions and arcs as arrays,
+ * each arc's members as an array, passage.text and summary.mainPoint as
+ * strings) so a body that is not an object, or missing one of those, is a
+ * 400 rather than an unhandled 500. It is not a restatement of validateDoc's
+ * semantic rules, and it is not exhaustive: a summary.levels entry missing
+ * `text` (read by completionMissing) and a null or malformed element inside
+ * an otherwise-array arcs[i].members (read by structuralViolations) are
+ * known gaps, left alone deliberately rather than growing this into a
+ * second copy of validateDoc's own checks.
  */
 function hasArcDocShape(value: unknown): value is ArcDoc {
   if (typeof value !== "object" || value === null) return false;

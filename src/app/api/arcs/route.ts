@@ -11,12 +11,15 @@ const ARC_TIMEZONE = "America/New_York";
 
 /**
  * isSafeArcId (server/arcStore.ts) caps an arc id at 80 characters. The date
- * prefix arcId prepends is 11 of those (YYYY-MM-DD plus the joining hyphen),
- * leaving 69 for the reference's slug. Reject an oversized reference here,
- * before any ESV fetch or write, rather than letting writeArc fail later on
- * an id isSafeArcId refuses.
+ * prefix arcId prepends is 11 of those (YYYY-MM-DD plus the joining hyphen).
+ * arcId can also append a same-day collision suffix ("-2", "-3", ...) with no
+ * fixed upper bound, so no static slug length can guarantee safety on its
+ * own; this only rejects the common case early, before any ESV fetch or
+ * write. 66 leaves headroom for the date prefix plus an ordinary collision
+ * suffix; the write below is still guarded in case a pathological same-day
+ * collision count gets past this anyway.
  */
-const MAX_REFERENCE_SLUG_LENGTH = 69;
+const MAX_REFERENCE_SLUG_LENGTH = 66;
 
 export async function GET(req: Request): Promise<Response> {
   if (!hasValidSession(req)) return unauthorized();
@@ -74,6 +77,17 @@ export async function POST(req: Request): Promise<Response> {
   const violations = validateDoc(doc);
   if (violations.length > 0) return invalid(violations);
 
-  await writeArc(doc);
+  try {
+    await writeArc(doc);
+  } catch (error) {
+    // Belt and braces: the length check above rejects the common case, but a
+    // same-day collision suffix has no fixed upper bound, so isSafeArcId can
+    // still refuse doc.id here. Anything else is a real failure and must
+    // still surface as a 500 (the visibility Task 10's review restored).
+    if (error instanceof Error && error.message.startsWith("unsafe arc id")) {
+      return badRequest("reference is too long");
+    }
+    throw error;
+  }
   return NextResponse.json(doc, { status: 201 });
 }
