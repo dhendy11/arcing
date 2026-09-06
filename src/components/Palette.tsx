@@ -1,6 +1,6 @@
 "use client";
 
-import { canRelabel, canRelate } from "@/core/arcTree";
+import { canRelabel, canRelate, selectionFit } from "@/core/arcTree";
 import { GROUP_HEADINGS, GROUP_ORDER, RELATIONSHIPS, type RelCode } from "@/core/relationships";
 import type { ArcDoc, Member } from "@/core/types";
 
@@ -26,50 +26,79 @@ export function Palette({
   currentCode?: RelCode | null;
   onPick: (code: RelCode) => void;
 }) {
+  /*
+    A selection-level block (nothing selected, or a gap between the units) is
+    ONE fact about the selection: it is the same answer on all 18 rows and
+    says nothing about any relationship. It reads once, above the groups, and
+    the rows are left at full strength. Relabelling never carries one, since
+    an arc's own members are adjacent by construction.
+  */
+  const block = relabelArcId === null ? selectionFit(doc, units) : { ok: true as const };
+
   return (
     <div className="palette">
-      {GROUP_ORDER.map((group) => (
-        <section key={group} className="palette-group">
-          <h4>{GROUP_HEADINGS[group]}</h4>
-          {RELATIONSHIPS.filter((rel) => rel.group === group).map((rel) => {
-            const fit = relabelArcId
-              ? canRelabel(doc, relabelArcId, rel.code)
-              : canRelate(doc, units, rel.code);
-            const isCurrent = relabelArcId !== null && currentCode === rel.code;
-            return (
-              <div key={rel.code} className="palette-row">
-                <button
-                  type="button"
-                  data-testid={`rel-${rel.code}`}
-                  data-rel={rel.code}
-                  data-current={isCurrent}
-                  aria-pressed={relabelArcId === null ? undefined : isCurrent}
-                  disabled={!fit.ok}
-                  onClick={() => onPick(rel.code)}
-                >
-                  <span className="sym">{rel.symbol}</span>
-                  <span className="name">
-                    {rel.name}
-                    {rel.requiresCircle ? <span className="ring">circle one</span> : null}
-                  </span>
-                  <span className="def">{rel.definition}</span>
-                  {fit.ok ? null : <span className="why">{fit.reason}</span>}
-                </button>
-                {/*
-                  Piper's page 34 warning belongs to the Ground and Inference
-                  PAIR, not to either one alone, so it is printed once, under
-                  the second of the two, where it reads as a note on both.
-                */}
-                {rel.code === "Inf" && rel.warning ? (
-                  <p className="warn" data-testid="ground-inference-warning">
-                    {rel.warning}
-                  </p>
-                ) : null}
-              </div>
-            );
-          })}
-        </section>
-      ))}
+      {block.ok ? null : (
+        <p className="palette-block" data-testid="palette-block">
+          {block.reason}
+        </p>
+      )}
+
+      {GROUP_ORDER.map((group) => {
+        const rows = RELATIONSHIPS.filter((rel) => rel.group === group);
+        return (
+          <section key={group} className="palette-group">
+            <h4>{GROUP_HEADINGS[group]}</h4>
+            {rows.map((rel, index) => {
+              // Only asked once the selection itself is relatable, so what
+              // comes back is the row's own member-count answer.
+              const fit = block.ok
+                ? relabelArcId
+                  ? canRelabel(doc, relabelArcId, rel.code)
+                  : canRelate(doc, units, rel.code)
+                : null;
+              const unfit = fit !== null && !fit.ok;
+              const isCurrent = relabelArcId !== null && currentCode === rel.code;
+              /*
+                Piper's page 34 warning belongs to the Ground and Inference
+                PAIR, so it prints once, under the last row in the group
+                carrying it, where it reads as a note on both. Driven by the
+                warning field itself, never by a hardcoded relationship code.
+              */
+              const lastCarryingWarning =
+                rel.warning !== undefined &&
+                !rows.slice(index + 1).some((later) => later.warning === rel.warning);
+
+              return (
+                <div key={rel.code} className="palette-row">
+                  <button
+                    type="button"
+                    data-testid={`rel-${rel.code}`}
+                    data-rel={rel.code}
+                    data-current={isCurrent}
+                    data-unfit={unfit}
+                    aria-pressed={relabelArcId === null ? undefined : isCurrent}
+                    disabled={fit === null || !fit.ok}
+                    onClick={() => onPick(rel.code)}
+                  >
+                    <span className="sym">{rel.symbol}</span>
+                    <span className="name">
+                      {rel.name}
+                      {rel.requiresCircle ? <span className="ring">circle one</span> : null}
+                    </span>
+                    <span className="def">{rel.definition}</span>
+                    {unfit ? <span className="why">{fit.reason}</span> : null}
+                  </button>
+                  {lastCarryingWarning ? (
+                    <p className="warn" data-testid="ground-inference-warning">
+                      {rel.warning}
+                    </p>
+                  ) : null}
+                </div>
+              );
+            })}
+          </section>
+        );
+      })}
     </div>
   );
 }

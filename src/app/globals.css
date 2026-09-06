@@ -689,12 +689,6 @@ input, textarea, select { min-height: 44px; }
   color: var(--destructive);
 }
 
-.arc-actions .warn {
-  flex-basis: 100%;
-  margin: 0;
-  font-size: 15px;
-}
-
 .circle-choice {
   display: flex;
   flex-basis: 100%;
@@ -730,6 +724,15 @@ input, textarea, select { min-height: 44px; }
   gap: 0 16px;
   padding-top: 16px;
   border-top: 1px solid var(--rule);
+}
+
+/* One selection-level line for the whole palette, above the four groups. It
+   is not a control, so weight carries it and no colour does. */
+.palette-block {
+  grid-column: 1 / -1;
+  margin: 0 0 12px;
+  padding: 0 6px;
+  font-weight: 600;
 }
 
 .palette-group h4 {
@@ -772,17 +775,19 @@ input, textarea, select { min-height: 44px; }
 }
 
 /* A row that does not fit is dimmed, but its reason is NOT: an unfit row is
-   only useful if the why stays readable. The dim is deliberately shallow,
-   because the whole palette is unfit until units are selected and the 18
-   names still have to be scannable in that resting state. */
+   only useful if the why stays readable. The dim is keyed on data-unfit, not
+   on :disabled, so it marks a row that fails on its OWN member count and
+   never the whole palette behind a selection-level block. 0.7 composites to
+   rgb(95,92,90) on paper, 6.3:1, clear of the 4.5:1 floor for this type
+   size; 0.55 was 3.9:1 and failed it. */
 .palette-row button:disabled {
   cursor: default;
 }
 
-.palette-row button:disabled .sym,
-.palette-row button:disabled .name,
-.palette-row button:disabled .def {
-  opacity: 0.55;
+.palette-row button[data-unfit="true"] .sym,
+.palette-row button[data-unfit="true"] .name,
+.palette-row button[data-unfit="true"] .def {
+  opacity: 0.7;
 }
 
 .palette-row .sym {

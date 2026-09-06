@@ -6,6 +6,7 @@ import {
   createArc,
   dissolveArc,
   relabelArc,
+  selectionFit,
   setCircled,
 } from "./arcTree";
 import { newArcDoc } from "./doc";
@@ -155,4 +156,12 @@ test("relabel fit is judged against the arc's own member count", () => {
   doc = createArc(doc, [arc("a1"), prop("p3")], "G");
   expect(canRelabel(doc, "a1", "Cf")).toEqual({ ok: true });
   expect(canRelabel(doc, "a1", "BL")).toEqual({ ok: false, reason: "Takes exactly 3" });
+});
+
+test("selection fit answers the part of canRelate that no relationship changes", () => {
+  const doc = fiveProps();
+  expect(selectionFit(doc, [])).toEqual({ ok: false, reason: "Select two or more neighbours" });
+  expect(selectionFit(doc, [prop("p1")])).toEqual({ ok: false, reason: "Select two or more neighbours" });
+  expect(selectionFit(doc, [prop("p1"), prop("p3")])).toEqual({ ok: false, reason: "Select neighbours" });
+  expect(selectionFit(doc, [prop("p1"), prop("p2")])).toEqual({ ok: true });
 });

@@ -3,6 +3,8 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, expect, test, vi } from "vitest";
 import { useArcStore } from "@/client/store";
+import { dissolveArc } from "@/core/arcTree";
+import { RELATIONSHIPS } from "@/core/relationships";
 import { newArcDoc } from "@/core/doc";
 import { splitAt } from "@/core/split";
 import type { ArcDoc } from "@/core/types";
@@ -50,16 +52,16 @@ test("selecting two neighbours and picking Ground draws the arc", async () => {
   expect(next.arcs[0].members).toEqual([{ kind: "prop", ref: "p1" }, { kind: "prop", ref: "p2" }]);
 });
 
-test("a non-adjacent selection disables every row and says Select neighbours", async () => {
+test("a non-adjacent selection closes the palette with one Select neighbours line", async () => {
   const { container } = render(<RelateView doc={fourProps()} onChange={vi.fn()} />);
 
   await select('[data-prop="p1"]', container);
   await select('[data-prop="p3"]', container);
 
-  const rows = screen.getAllByRole("button", { name: /Select neighbours/ });
-  expect(rows).toHaveLength(18);
-  for (const row of rows) expect(row).toBeDisabled();
-  expect(screen.getByTestId("rel-S")).toHaveTextContent("Select neighbours");
+  expect(screen.getByTestId("palette-block")).toHaveTextContent("Select neighbours");
+  expect(screen.getAllByText("Select neighbours")).toHaveLength(1);
+  for (const rel of RELATIONSHIPS) expect(screen.getByTestId(`rel-${rel.code}`)).toBeDisabled();
+  expect(screen.getByTestId("rel-S")).not.toHaveTextContent("Select neighbours");
 });
 
 test("tapping a selected unit again deselects it", async () => {
@@ -136,9 +138,22 @@ test("tapping an arc offers Relabel and Dissolve", async () => {
 
   await select('[data-arc="a1"]', container);
   await userEvent.click(screen.getByRole("button", { name: "Dissolve" }));
+  await userEvent.click(screen.getByRole("button", { name: "Dissolve anyway" }));
 
   const next = onChange.mock.calls[0][0] as ArcDoc;
   expect(next.arcs.map((a) => a.id)).toEqual([]);
+});
+
+test("cancelling a dissolve takes nothing apart", async () => {
+  const onChange = vi.fn();
+  const { container } = render(<RelateView doc={piperRomansDoc()} onChange={onChange} />);
+
+  await select('[data-arc="a1"]', container);
+  await userEvent.click(screen.getByRole("button", { name: "Dissolve" }));
+  await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+  expect(onChange).not.toHaveBeenCalled();
+  expect(screen.queryByRole("dialog")).toBeNull();
 });
 
 test("relabelling an arc keeps its members", async () => {
@@ -155,8 +170,55 @@ test("relabelling an arc keeps its members", async () => {
   expect(relabelled?.members).toHaveLength(2);
 });
 
-test("dissolving an arc with parents warns which come apart", async () => {
+test("dissolving an arc with parents names every arc that comes apart", async () => {
   const { container } = render(<RelateView doc={piperRomansDoc()} onChange={vi.fn()} />);
   await select('[data-arc="a1"]', container);
-  expect(screen.getByTestId("dissolve-warning")).toHaveTextContent("a1, a2, a3");
+  await userEvent.click(screen.getByRole("button", { name: "Dissolve" }));
+
+  const dialog = screen.getByRole("dialog", { name: "This dissolves arcs" });
+  expect(dialog).toHaveTextContent("a1 (Negative-Positive)");
+  expect(dialog).toHaveTextContent("a2 (Action-Purpose)");
+  expect(dialog).toHaveTextContent("a3 (Action-Purpose)");
+});
+
+test("an arc going away from under an open relabel closes it", async () => {
+  const doc = piperRomansDoc();
+  const { container, rerender } = render(<RelateView doc={doc} onChange={vi.fn()} />);
+
+  await select('[data-arc="a1"]', container);
+  await userEvent.click(screen.getByRole("button", { name: "Relabel" }));
+  expect(screen.getByRole("button", { name: "Relabel" })).toHaveAttribute("aria-pressed", "true");
+
+  rerender(<RelateView doc={dissolveArc(doc, "a1")} onChange={vi.fn()} />);
+  expect(screen.queryByRole("button", { name: "Relabel" })).toBeNull();
+});
+
+test("a save tick leaves an open relabel alone", async () => {
+  const doc = piperRomansDoc();
+  const { container, rerender } = render(<RelateView doc={doc} onChange={vi.fn()} />);
+
+  await select('[data-arc="a1"]', container);
+  await userEvent.click(screen.getByRole("button", { name: "Relabel" }));
+
+  // What a completed autosave hands back: a fresh object, same structure.
+  rerender(
+    <RelateView
+      doc={{ ...structuredClone(doc), rev: doc.rev + 1, updatedAt: "2026-09-06T00:00:00.000Z" }}
+      onChange={vi.fn()}
+    />
+  );
+  expect(screen.getByRole("button", { name: "Relabel" })).toHaveAttribute("aria-pressed", "true");
+});
+
+test("a save tick leaves an open dissolve dialog alone", async () => {
+  const doc = piperRomansDoc();
+  const { container, rerender } = render(<RelateView doc={doc} onChange={vi.fn()} />);
+
+  await select('[data-arc="a1"]', container);
+  await userEvent.click(screen.getByRole("button", { name: "Dissolve" }));
+
+  rerender(
+    <RelateView doc={{ ...structuredClone(doc), rev: doc.rev + 1 }} onChange={vi.fn()} />
+  );
+  expect(screen.getByRole("dialog", { name: "This dissolves arcs" })).toBeInTheDocument();
 });

@@ -17,9 +17,21 @@ export function unitsAreAdjacentTopLevel(doc: ArcDoc, units: Member[]): boolean 
   return positions.every((p, i) => i === 0 || p === positions[i - 1] + 1);
 }
 
-export function canRelate(doc: ArcDoc, units: Member[], code: RelCode): Fit {
+/**
+ * The half of canRelate that no relationship changes: whether the SELECTION
+ * itself can be related at all. Split out because the Relate screen says this
+ * once for the whole palette. Printing it on all 18 rows repeats one fact 18
+ * times and buries the names being compared, which is the screen's whole job.
+ */
+export function selectionFit(doc: ArcDoc, units: Member[]): Fit {
   if (units.length < 2) return { ok: false, reason: "Select two or more neighbours" };
   if (!unitsAreAdjacentTopLevel(doc, units)) return { ok: false, reason: "Select neighbours" };
+  return { ok: true };
+}
+
+export function canRelate(doc: ArcDoc, units: Member[], code: RelCode): Fit {
+  const selection = selectionFit(doc, units);
+  if (!selection.ok) return selection;
 
   const rel = relationship(code);
   return memberCountFit(rel, units.length);

@@ -69,6 +69,34 @@ test("a disabled row says why", () => {
   expect(screen.getByTestId("rel-G")).toHaveTextContent("Takes exactly 2");
 });
 
+/**
+ * A selection-level block is one fact about the selection, identical on all 18
+ * rows and saying nothing about any relationship. It reads once, above the
+ * groups, and the rows stay at full strength so the names can still be
+ * compared, which is the resting state Drew does his comparing in.
+ */
+test("a selection that cannot be related says so once, not on all 18 rows", () => {
+  render(<Palette doc={fourProps()} units={[]} onPick={vi.fn()} />);
+  expect(screen.getByTestId("palette-block")).toHaveTextContent("Select two or more neighbours");
+  expect(screen.getAllByText("Select two or more neighbours")).toHaveLength(1);
+  expect(screen.getByTestId("rel-S")).toBeDisabled();
+  expect(screen.getByTestId("rel-S")).not.toHaveTextContent("Select two or more neighbours");
+});
+
+test("only a row unfit on its own member count is marked unfit", () => {
+  render(<Palette doc={fourProps()} units={[prop("p1"), prop("p2")]} onPick={vi.fn()} />);
+  expect(screen.getByTestId("rel-BL")).toHaveAttribute("data-unfit", "true");
+  expect(screen.getByTestId("rel-G")).toHaveAttribute("data-unfit", "false");
+
+});
+
+test("a selection-level block marks no row unfit", () => {
+  const { container } = render(<Palette doc={fourProps()} units={[]} onPick={vi.fn()} />);
+  const rows = container.querySelectorAll("[data-rel]");
+  expect(rows).toHaveLength(18);
+  for (const row of rows) expect(row).toHaveAttribute("data-unfit", "false");
+});
+
 test("picking a relationship reports its code", async () => {
   const onPick = vi.fn();
   render(<Palette doc={fourProps()} units={[prop("p1"), prop("p2")]} onPick={onPick} />);

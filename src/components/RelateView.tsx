@@ -30,6 +30,33 @@ export function RelateView({ doc, onChange }: { doc: ArcDoc; onChange: (doc: Arc
   const selection = useArcStore((s) => s.selection);
   const setSelection = useArcStore((s) => s.setSelection);
   const [relabelling, setRelabelling] = useState<string | null>(null);
+  /** The arc whose dissolve is waiting on the confirm dialog. */
+  const [pendingDissolve, setPendingDissolve] = useState<string | null>(null);
+  /*
+    The propositions and arcs the two pieces of pending state were computed
+    against, compared by VALUE, not by the whole doc's reference. ArcFrame
+    installs a document-level Undo/Redo shortcut this component does not
+    suppress, so the document can change out from under an open relabel or an
+    open confirm dialog; without this, the sheet would keep reading as a
+    relabel in progress on an arc that no longer exists, and the dialog would
+    list arcs the document may no longer describe. Comparing `doc` itself by
+    reference would be worse than nothing: a completed autosave hands back a
+    freshly parsed object on every save tick, so an ordinary save would
+    dismiss the dialog with nothing to invalidate it. This is React's
+    documented pattern for resetting state when a prop changes (adjusting
+    state during render), not a useEffect, whose unconditional setState the
+    project's own lint rule rejects. SplitView solves the same class the same
+    way.
+  */
+  const [stateForDoc, setStateForDoc] = useState(doc);
+  if (
+    JSON.stringify(doc.propositions) !== JSON.stringify(stateForDoc.propositions) ||
+    JSON.stringify(doc.arcs) !== JSON.stringify(stateForDoc.arcs)
+  ) {
+    setStateForDoc(doc);
+    setRelabelling(null);
+    setPendingDissolve(null);
+  }
 
   const focusedArc = selection.length === 1 && selection[0].kind === "arc" ? selection[0].ref : null;
   const focusedNode = focusedArc === null ? undefined : arcById(doc, focusedArc);
@@ -98,21 +125,19 @@ export function RelateView({ doc, onChange }: { doc: ArcDoc; onChange: (doc: Arc
             >
               Relabel
             </button>
+            {/*
+              A dissolve takes the arc AND every arc above it apart, which is
+              strictly more than a split does, and the split screen already
+              confirms. Same gate, same dialog shape, same naming.
+            */}
             <button
               type="button"
               className="destructive"
-              onClick={() => {
-                onChange(dissolveArc(doc, focusedNode.id));
-                setSelection([]);
-              }}
+              onClick={() => setPendingDissolve(focusedNode.id)}
             >
               Dissolve
             </button>
           </div>
-
-          <p className="warn" data-testid="dissolve-warning">
-            Dissolving takes these apart: {arcsDissolvedByDissolve(doc, focusedNode.id).join(", ")}
-          </p>
 
           {focusedRel.requiresCircle ? (
             <div className="circle-choice" role="group" aria-label="Circled member">
@@ -135,6 +160,34 @@ export function RelateView({ doc, onChange }: { doc: ArcDoc; onChange: (doc: Arc
               ) : null}
             </div>
           ) : null}
+        </div>
+      )}
+
+      {pendingDissolve === null ? null : (
+        <div className="modal" role="dialog" aria-label="This dissolves arcs">
+          <p>These arcs come apart:</p>
+          <ul>
+            {arcsDissolvedByDissolve(doc, pendingDissolve).map((id) => {
+              const node = arcById(doc, id);
+              return <li key={id}>{node ? `${id} (${relationship(node.rel).name})` : id}</li>;
+            })}
+          </ul>
+          <div className="modal-actions">
+            <button type="button" onClick={() => setPendingDissolve(null)}>
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="destructive"
+              onClick={() => {
+                onChange(dissolveArc(doc, pendingDissolve));
+                setPendingDissolve(null);
+                setSelection([]);
+              }}
+            >
+              Dissolve anyway
+            </button>
+          </div>
         </div>
       )}
 
