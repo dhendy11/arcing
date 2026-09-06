@@ -25,8 +25,17 @@ export function createRateLimiter(limit: number, windowMs: number): RateLimiter 
 /** 5 tries a minute per IP, then 429. */
 export const loginLimiter = createRateLimiter(5, 60_000);
 
+/**
+ * Reads the LAST hop of x-forwarded-for: the entry the reverse proxy in
+ * front of this app appends, not the first hop, which is client-supplied
+ * and would let a caller rotate identities to sidestep the limiter. This
+ * assumes exactly one proxy sits in front (Caddy, on the same box); a
+ * second proxy in the chain would move the trustworthy entry and this
+ * would need to change with it.
+ */
 export function clientIp(req: Request): string {
   const forwarded = req.headers.get("x-forwarded-for");
   if (!forwarded) return "unknown";
-  return forwarded.split(",")[0].trim() || "unknown";
+  const hops = forwarded.split(",").map((h) => h.trim()).filter(Boolean);
+  return hops.length > 0 ? hops[hops.length - 1] : "unknown";
 }

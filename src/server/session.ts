@@ -38,7 +38,11 @@ export function verifySession(token: string, secret: string, nowMs: number): boo
   const payload = token.slice(0, dot);
   const mac = token.slice(dot + 1);
   const expected = createHmac("sha256", secret).update(payload).digest("hex");
-  if (mac.length !== expected.length) return false;
+  // Shape-check before comparing: timingSafeEqual throws on unequal BYTE
+  // length, and a 64-character attacker-supplied mac can encode to more
+  // than 64 bytes (a multi-byte character), which would otherwise throw
+  // out through hasValidSession into every guarded route.
+  if (!/^[0-9a-f]{64}$/.test(mac)) return false;
   if (!timingSafeEqual(Buffer.from(mac), Buffer.from(expected))) return false;
   const expiry = Number(payload);
   return Number.isFinite(expiry) && nowMs < expiry;

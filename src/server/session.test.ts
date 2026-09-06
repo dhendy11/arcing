@@ -57,6 +57,16 @@ test("a tampered expiry does not verify", () => {
   expect(verifySession(tampered, SECRET, 1001)).toBe(false);
 });
 
+test("a mac with a multi-byte character does not verify and does not throw", () => {
+  const token = signSession(1000, SECRET);
+  const dot = token.indexOf(".");
+  const payload = token.slice(0, dot);
+  const badMac = `${"a".repeat(63)}é`;
+  const tampered = `${payload}.${badMac}`;
+  expect(() => verifySession(tampered, SECRET, 1)).not.toThrow();
+  expect(verifySession(tampered, SECRET, 1)).toBe(false);
+});
+
 test("the cookie is httpOnly, Secure, SameSite Lax and 30 days long", () => {
   const header = sessionSetCookie("abc");
   expect(header).toContain(`${SESSION_COOKIE}=abc`);

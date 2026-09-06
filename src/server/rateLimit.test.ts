@@ -19,8 +19,13 @@ test("one address being refused does not refuse another", () => {
   expect(limiter.allow("5.6.7.8", 1000)).toBe(true);
 });
 
-test("the client address is the first hop of x-forwarded-for", () => {
+test("the client address is the last hop of x-forwarded-for, the one the proxy appended", () => {
   const req = new Request("https://x.test/", { headers: { "x-forwarded-for": "9.9.9.9, 10.0.0.1" } });
-  expect(clientIp(req)).toBe("9.9.9.9");
+  expect(clientIp(req)).toBe("10.0.0.1");
   expect(clientIp(new Request("https://x.test/"))).toBe("unknown");
+});
+
+test("a client-supplied first hop does not become the limiter's identity", () => {
+  const req = new Request("https://x.test/", { headers: { "x-forwarded-for": "1.2.3.4, 5.6.7.8" } });
+  expect(clientIp(req)).toBe("5.6.7.8");
 });
