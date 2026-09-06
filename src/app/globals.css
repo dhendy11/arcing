@@ -4,6 +4,9 @@
   --accent: #1d4ed8;
   --destructive: #b91c1c;
   --amber: #b45309;
+  /* The one derived neutral this stylesheet is allowed: hairlines and
+     borders. Text is never anything but --ink. */
+  --rule: color-mix(in srgb, var(--ink) 20%, var(--paper));
   --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
   --serif: Georgia, "Times New Roman", serif;
 }
@@ -612,3 +615,217 @@ input, textarea, select { min-height: 44px; }
 .arc-svg [data-prop], .arc-svg [data-arc], .arc-svg [data-circle] { cursor: pointer; }
 .arc-svg [data-arc-group][data-selected="true"] .stroke { stroke: var(--accent); }
 .arc-svg [data-arc-group][data-selected="true"] .arc-symbol { fill: var(--accent); }
+
+/* The missing-circle signal has to carry weight beside 3 px ink arcs: at the
+   SVG default stroke-width of 1 it was the thinnest line in the whole
+   diagram, so the one mark saying an arc is incomplete read as a hairline.
+   A rule, not a presentation attribute: an attribute loses to every CSS rule
+   in the cascade, which is exactly how the selected-arc stroke went wrong
+   once already. */
+.arc-svg [data-circle][data-missing="true"] { stroke-width: 2; }
+
+/* Relate screen. All 18 relationships stay on screen at once in Piper's four
+   groups: choosing a label is comparing candidates, not recalling a name.
+   Nothing here hides, collapses or filters a row. */
+
+.relate-screen {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* ArcSvg asks for width 100% against a 1024 unit viewBox, so a 44 unit
+   target is 44 CSS px only while the SVG renders at exactly 1024 px wide.
+   Any page padding would silently scale every target under the binding
+   floor. Mockup A answers this itself: a fixed 1024 px diagram inside a
+   horizontally scrollable wrapper, never a scale-to-fit. */
+.arc-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.arc-scroll .arc-svg {
+  display: block;
+  width: 1024px;
+  height: auto;
+}
+
+/* The label sheet for one selected arc: relabel it, dissolve it, and set the
+   circle it owns. */
+.arc-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 16px;
+  padding: 16px 20px;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+}
+
+.arc-actions-row {
+  display: flex;
+  gap: 12px;
+}
+
+.arc-actions button {
+  padding: 0 20px;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  background: none;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.arc-actions button[aria-pressed="true"] {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, var(--paper));
+  font-weight: 600;
+}
+
+/* Dissolve takes arcs apart and is the only control on this screen that
+   earns the destructive colour. */
+.arc-actions .destructive {
+  border-color: var(--destructive);
+  color: var(--destructive);
+}
+
+.arc-actions .warn {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 15px;
+}
+
+.circle-choice {
+  display: flex;
+  flex-basis: 100%;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--rule);
+}
+
+.circle-choice h4 {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+/* Amber is reserved for exactly one thing in this app and this is it: a
+   relationship that circles a member with none chosen yet. */
+.circle-missing {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--amber);
+  font-weight: 600;
+}
+
+/* Piper's four groups side by side, widths in proportion to how many rows
+   each holds and how long its definitions run (mockup A). */
+.palette {
+  display: grid;
+  grid-template-columns: 0.85fr 1.05fr 1.35fr 0.85fr;
+  align-items: start;
+  gap: 0 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--rule);
+}
+
+.palette-group h4 {
+  margin: 0 0 8px;
+  padding: 0 6px;
+  /* Three lines at the narrowest column, so the four groups start level
+     however long a heading runs (mockup A pins the same 58 px). */
+  min-height: 58px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* The symbol and the name read as one line, the definition takes the whole
+   column beneath them. A fixed symbol column would eat a third of the two
+   narrow groups, and the definition is the thing being compared. */
+.palette-row button {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  padding: 8px 6px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+
+.palette-row button:not(:disabled):hover,
+.palette-row button:not(:disabled):focus-visible {
+  background: color-mix(in srgb, var(--accent) 8%, var(--paper));
+}
+
+/* The label the arc already carries, while it is being relabelled. */
+.palette-row button[data-current="true"] {
+  background: color-mix(in srgb, var(--accent) 12%, var(--paper));
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+/* A row that does not fit is dimmed, but its reason is NOT: an unfit row is
+   only useful if the why stays readable. The dim is deliberately shallow,
+   because the whole palette is unfit until units are selected and the 18
+   names still have to be scannable in that resting state. */
+.palette-row button:disabled {
+  cursor: default;
+}
+
+.palette-row button:disabled .sym,
+.palette-row button:disabled .name,
+.palette-row button:disabled .def {
+  opacity: 0.55;
+}
+
+.palette-row .sym {
+  margin-right: 8px;
+  font-weight: 700;
+}
+
+.palette-row .name {
+  font-size: 17px;
+}
+
+.palette-row .ring {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 8px;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  font-size: 12px;
+  line-height: 18px;
+  vertical-align: 1px;
+}
+
+.palette-row .def {
+  display: block;
+  margin-top: 2px;
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+/* The reason a row is unfit. No colour: it is not a control. No extra
+   weight either, because the same selection-level reason prints on all 18
+   rows at once, and bolding it there buries the names Drew is comparing.
+   Full-strength ink against the dimmed row is the contrast that carries it. */
+.palette-row .why {
+  display: block;
+  margin-top: 4px;
+  font-size: 13px;
+}
+
+.palette .warn {
+  margin: 2px 6px 10px;
+  padding-left: 10px;
+  border-left: 2px solid var(--rule);
+  font-size: 14px;
+  line-height: 1.4;
+}

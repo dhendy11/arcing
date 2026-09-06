@@ -26,6 +26,19 @@ export function canRelate(doc: ArcDoc, units: Member[], code: RelCode): Fit {
 }
 
 /**
+ * Fit for RELABELLING an existing arc. Unlike canRelate this asks only about
+ * the member count: an existing arc's members are already adjacent by
+ * construction, and they are not top level whenever the arc has a parent, so
+ * canRelate would answer "Select neighbours" for every row. The count rule
+ * itself stays in memberCountFit, the one place it lives.
+ */
+export function canRelabel(doc: ArcDoc, arcId: string, code: RelCode): Fit {
+  const target = doc.arcs.find((a) => a.id === arcId);
+  if (!target) return { ok: false, reason: "Unknown arc" };
+  return memberCountFit(relationship(code), target.members.length);
+}
+
+/**
  * Derived from the highest suffix currently in doc.arcs, so a used id will
  * not repeat while any arc still holds it. Once every arc has been
  * dissolved, numbering can restart at a1, since nothing live holds the old

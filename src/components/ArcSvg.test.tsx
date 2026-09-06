@@ -46,6 +46,21 @@ test("the circled member is ringed and the other member is a plain target", () =
   expect(container.querySelector('[data-circle="a3:1"][data-circled="false"]')).not.toBeNull();
 });
 
+/**
+ * The one-ellipse-per-circled-member invariant. Without it a regression that
+ * ringed every member of a circling arc, or none of them, passes this whole
+ * file: Piper's Romans arc has exactly two circles, one on a2 and one on a3.
+ */
+test("exactly one ring is drawn per circled member", () => {
+  const { container } = draw();
+  expect(container.querySelectorAll("ellipse")).toHaveLength(2);
+});
+
+test("an arc with every circle chosen is not in the missing-circle state", () => {
+  const { container } = draw();
+  expect(container.querySelectorAll('[data-missing="true"]')).toHaveLength(0);
+});
+
 test("an arc still missing its circle shows amber on both targets", () => {
   const doc = piperRomansDoc();
   const uncircled = { ...doc, arcs: doc.arcs.map((a) => (a.id === "a2" ? { ...a, circled: null } : a)) };

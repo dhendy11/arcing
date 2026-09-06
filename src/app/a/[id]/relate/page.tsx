@@ -1,6 +1,12 @@
-// Relate is built in Task 19. Until then this tab is reachable (the frame's
-// tab bar and routing already work) but shows an empty screen, same as
-// before the workspace moved into the shared layout.
+"use client";
+
+import { useArcStore } from "@/client/store";
+import { useArcEdit } from "@/components/ArcWorkspace";
+import { RelateView } from "@/components/RelateView";
+
 export default function RelatePage() {
-  return null;
+  const doc = useArcStore((s) => s.doc);
+  const edit = useArcEdit();
+  if (!doc) return null;
+  return <RelateView doc={doc} onChange={edit} />;
 }

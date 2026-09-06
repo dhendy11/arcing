@@ -1,6 +1,7 @@
 import { expect, test } from "vitest";
 import {
   arcsDissolvedByDissolve,
+  canRelabel,
   canRelate,
   createArc,
   dissolveArc,
@@ -147,4 +148,11 @@ test("dissolving the innermost of three nested arcs dissolves the arcs above it 
   doc = createArc(doc, [arc("a2"), prop("p4")], "G");
   expect(arcsDissolvedByDissolve(doc, "a1")).toEqual(["a1", "a2", "a3"]);
   expect(validateDoc(dissolveArc(doc, "a1"))).toEqual([]);
+});
+
+test("relabel fit is judged against the arc's own member count", () => {
+  let doc = createArc(fiveProps(), [prop("p1"), prop("p2")], "NegPos");
+  doc = createArc(doc, [arc("a1"), prop("p3")], "G");
+  expect(canRelabel(doc, "a1", "Cf")).toEqual({ ok: true });
+  expect(canRelabel(doc, "a1", "BL")).toEqual({ ok: false, reason: "Takes exactly 3" });
 });
