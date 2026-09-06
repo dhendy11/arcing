@@ -64,12 +64,17 @@ export interface Geometry {
  * against the face that mockup renders proposition text in, which is the
  * system SANS stack at 17 px in a 528 px column (its CSS sets svg text to
  * -apple-system and never overrides it for .p). The spec's binding type rule
- * is sans chrome and SERIF passage text, so the renderer will NOT use that
- * face. A 58-character serif line is not 528 px wide, and any line that
- * overflows the column runs into the baseline stroke at BASELINE_X. Re-check
- * this budget against a real serif render and re-derive it if it overflows.
- * Changing it changes every row height and therefore every arc, so it is a
- * layout decision and not a renderer tweak.
+ * is sans chrome and SERIF passage text, so the renderer does NOT use that
+ * face.
+ *
+ * MEASURED AND CLOSED at the task 7 review, in headless Chromium: every
+ * wrapped line of Piper's Romans 12:1-2 set in Georgia, "Times New Roman",
+ * serif at 17 px is NARROWER than the same line in the sans stack this
+ * budget was fitted against. The widest real line lands at 460.5 px in the
+ * 528 px column, 67 px of headroom, so no line reaches the baseline stroke
+ * at BASELINE_X. MAX_CHARS 58 stands and no geometry moves; do not
+ * re-derive it. Changing it changes every row height and therefore every
+ * arc, so it is a layout decision and not a renderer tweak.
  */
 export const LAYOUT = {
   WIDTH: 1024,

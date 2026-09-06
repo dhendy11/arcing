@@ -603,3 +603,15 @@ input, textarea, select { min-height: 44px; }
   margin: 0 0 16px;
   font-weight: 600;
 }
+
+/* The arc diagram. Sans chrome, serif passage text, one ink weight for every
+   stroke, exactly as mockup A draws it. Hierarchy is size, weight and
+   position; the accent marks selection and amber marks a missing circle. */
+.arc-svg text { font-family: var(--sans); font-size: 17px; fill: var(--ink); }
+.arc-svg .prop-text { font-family: var(--serif); }
+.arc-svg .prop-number, .arc-svg .arc-symbol { font-weight: 700; }
+.arc-svg .stroke { fill: none; stroke: var(--ink); stroke-width: 3; stroke-linecap: round; }
+.arc-svg .circle-ring { stroke-width: 2.5; }
+.arc-svg [data-prop], .arc-svg [data-arc], .arc-svg [data-circle] { cursor: pointer; }
+.arc-svg [data-arc-group][data-selected="true"] .stroke { stroke: var(--accent); }
+.arc-svg [data-arc-group][data-selected="true"] .arc-symbol { fill: var(--accent); }
