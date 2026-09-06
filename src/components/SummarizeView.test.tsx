@@ -41,6 +41,21 @@ test("adding a level appends it above the previous one", async () => {
   expect(next.summary.levels[1].text).toBe("");
 });
 
+test("typing into the connector field reports the edit", async () => {
+  const onChange = vi.fn();
+  const doc = ready();
+  const two: ArcDoc = {
+    ...doc,
+    summary: {
+      ...doc.summary,
+      levels: [{ text: "bottom", connector: "" }, { text: "top", connector: "" }],
+    },
+  };
+  render(<SummarizeView doc={two} onChange={onChange} />);
+  await userEvent.type(screen.getByLabelText("Connector above level 1"), "so");
+  expect((onChange.mock.calls[0][0] as ArcDoc).summary.levels[0].connector).toBe("s");
+});
+
 test("the topmost level has no connector field and stores an empty connector", async () => {
   const doc = ready();
   const two: ArcDoc = {
@@ -55,7 +70,7 @@ test("the topmost level has no connector field and stores an empty connector", a
   expect(screen.queryByLabelText("Connector above level 2")).toBeNull();
 });
 
-test("removing a level keeps the topmost connector empty", async () => {
+test("removing a level with text confirms first, then keeps the topmost connector empty", async () => {
   const onChange = vi.fn();
   const doc = ready();
   const two: ArcDoc = {
@@ -67,6 +82,25 @@ test("removing a level keeps the topmost connector empty", async () => {
   };
   render(<SummarizeView doc={two} onChange={onChange} />);
   await userEvent.click(screen.getByRole("button", { name: "Remove level 2" }));
+  expect(onChange).not.toHaveBeenCalled();
+  await userEvent.click(screen.getByRole("button", { name: "Remove anyway" }));
+  const next = onChange.mock.calls[0][0] as ArcDoc;
+  expect(next.summary.levels).toEqual([{ text: "bottom", connector: "" }]);
+});
+
+test("removing an empty level removes it on one tap, no confirm", async () => {
+  const onChange = vi.fn();
+  const doc = ready();
+  const two: ArcDoc = {
+    ...doc,
+    summary: {
+      ...doc.summary,
+      levels: [{ text: "bottom", connector: "" }, { text: "", connector: "" }],
+    },
+  };
+  render(<SummarizeView doc={two} onChange={onChange} />);
+  await userEvent.click(screen.getByRole("button", { name: "Remove level 2" }));
+  expect(screen.queryByRole("dialog")).toBeNull();
   const next = onChange.mock.calls[0][0] as ArcDoc;
   expect(next.summary.levels).toEqual([{ text: "bottom", connector: "" }]);
 });
@@ -115,6 +149,17 @@ test("a complete arc is still editable", async () => {
   expect(screen.getByLabelText("Main point")).toBeEnabled();
   await userEvent.type(screen.getByLabelText("Why it matters"), "!");
   expect(onChange).toHaveBeenCalled();
+});
+
+test("editing a complete arc so it no longer qualifies drops it out of complete", async () => {
+  const onChange = vi.fn();
+  const complete: ArcDoc = { ...ready(), markedComplete: true, status: "complete" };
+  render(<SummarizeView doc={complete} onChange={onChange} />);
+  await userEvent.clear(screen.getByLabelText("Main point"));
+  const calls = onChange.mock.calls;
+  const next = calls[calls.length - 1][0] as ArcDoc;
+  expect(next.summary.mainPoint).toBe("");
+  expect(next.status).toBe("relating");
 });
 
 test("an unfinished circle blocks completion and says which arc", () => {
