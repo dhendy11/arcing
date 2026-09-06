@@ -408,3 +408,198 @@ input, textarea, select { min-height: 44px; }
   z-index: -1;
   background: color-mix(in srgb, var(--ink) 40%, transparent);
 }
+
+/* The confirm dialog's own action row and its destructive confirm button.
+   Cancel stays a plain button; only the action that dissolves arcs takes
+   the destructive colour. */
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.modal-actions button.destructive {
+  background: var(--destructive);
+  color: var(--paper);
+  border: none;
+  border-radius: 6px;
+  padding: 0 20px;
+  font-weight: 600;
+}
+
+/* Split screen. Piper's rules sit in a fixed-width column beside the
+   passage (spec: "sit beside the text"), reordered here rather than in the
+   DOM so the passage still reads first for anyone using a screen reader. */
+.split-screen {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 260px;
+  align-items: start;
+  gap: 32px;
+}
+
+.split-screen .rules {
+  order: 2;
+  border: 1px solid color-mix(in srgb, var(--ink) 20%, var(--paper));
+  border-radius: 8px;
+  padding: 16px 20px;
+}
+
+.split-screen .rules h2 {
+  margin: 0 0 12px;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.split-screen .rules p {
+  margin: 0 0 12px;
+  font-size: 15px;
+}
+
+.split-screen .rules p:last-child {
+  margin-bottom: 0;
+}
+
+.split-screen .propositions {
+  order: 1;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.split-screen .propositions li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  padding: 10px 0;
+}
+
+/* The rejoin control: a full-width bar with an X sitting on it, so it reads
+   as the seam between two propositions rather than a floating button.
+   flex-basis: 100% forces it onto its own line ahead of the number and
+   words that follow it. The line is a pseudo-element running the full
+   width; the X's own background punches a gap in it, the same construction
+   as a labelled horizontal rule. */
+.split-screen .divider {
+  position: relative;
+  flex-basis: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  min-width: auto;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--ink);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.split-screen .divider::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  border-top: 1px solid color-mix(in srgb, var(--ink) 20%, var(--paper));
+}
+
+.split-screen .divider span {
+  position: relative;
+  background: var(--paper);
+  padding: 0 14px;
+}
+
+.split-screen .divider:hover,
+.split-screen .divider:focus-visible {
+  background: color-mix(in srgb, var(--accent) 8%, var(--paper));
+}
+
+.split-screen .divider:hover span,
+.split-screen .divider:focus-visible span {
+  background: color-mix(in srgb, var(--accent) 8%, var(--paper));
+}
+
+.split-screen .number {
+  flex: 0 0 auto;
+  min-width: 20px;
+  font-family: var(--sans);
+  font-size: 15px;
+  font-weight: 700;
+  text-align: right;
+}
+
+.split-screen .words {
+  display: flex;
+  flex: 1 1 300px;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 4px;
+}
+
+/* A word is the tap target that starts a new proposition. A literal 44 px
+   box per word is impossible inside running prose (a three-letter word
+   would need to be padded out to a 44 px square, breaking the line), so
+   the floor is met on height only: padding plus the inherited line-height
+   put every word at roughly 44-46 px tall. Width stays the word's own
+   width, which is the dimension reading cannot give up. The divider bars
+   above, by contrast, are dedicated full-width controls and keep the
+   literal 44 px floor on both axes. */
+.split-screen .word {
+  position: relative;
+  min-width: auto;
+  min-height: auto;
+  margin: 0;
+  padding: 10px 3px;
+  border: none;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+}
+
+.split-screen .word:hover,
+.split-screen .word:focus-visible {
+  background: color-mix(in srgb, var(--accent) 10%, var(--paper));
+}
+
+/* Hover shows a caret before the word, marking where a tap would start the
+   new proposition. */
+.split-screen .word:hover::before,
+.split-screen .word:focus-visible::before {
+  content: "\2038";
+  position: absolute;
+  left: -2px;
+  color: var(--accent);
+  font-weight: 700;
+}
+
+/* Verse numbers as badges: a small bordered pill ahead of the word they
+   start. The border is the one derived neutral already used for borders
+   elsewhere on this screen; the numeral itself stays ink, never grey. */
+.split-screen .verse {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 14px;
+  height: 14px;
+  margin-right: 3px;
+  padding: 0 3px;
+  border: 1px solid color-mix(in srgb, var(--ink) 20%, var(--paper));
+  border-radius: 999px;
+  font-family: var(--sans);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  vertical-align: top;
+  top: -2px;
+}
+
+/* An autosave failure the user needs to see. Weight carries it, same as
+   every other alert on this page; no colour is added for it. */
+.workspace-error {
+  margin: 0 0 16px;
+  font-weight: 600;
+}
