@@ -54,6 +54,19 @@ export function ArcWorkspace({ id, children }: { id: string; children: ReactNode
   const autosaveRef = useRef<Autosave | null>(null);
   const mirrorRef = useRef<MirrorPort | null>(null);
 
+  /**
+   * Handed to the autosave engine as atServerRev, which applies it to every
+   * document it takes, for both the mirror and the wire. `restored.rev` is
+   * whatever it was when the screen or the history step it came from was
+   * built, which the server may since have moved past (see latestServerRev's
+   * doc comment in store.ts); only `rev` is re-stamped, so the content
+   * itself is sent exactly as it was produced.
+   */
+  function forSave(restored: ArcDoc): ArcDoc {
+    const latestServerRev = useArcStore.getState().latestServerRev;
+    return latestServerRev === null ? restored : { ...restored, rev: latestServerRev };
+  }
+
   useEffect(() => {
     // Created here, not at render time: this component renders once on the
     // server as part of the page's initial HTML, where window does not
@@ -63,19 +76,23 @@ export function ArcWorkspace({ id, children }: { id: string; children: ReactNode
 
     const store = useArcStore.getState();
     const autosave = createAutosave({
-      // forSave at the SEND boundary, not only at the undo and redo
-      // callsites: rev is a server concurrency token and a document can
-      // reach this point carrying a stale one by two other routes. An edit
-      // made while a save is in flight is built from a store whose rev is
-      // still the pre-save value, and an edit made after an undo derives
-      // from a restored snapshot carrying the rev it had when that snapshot
-      // was captured. Either one sent as it stands is a 409 against this
-      // client's own save, and the banner that raises offers Reload, which
-      // replaces the local document with the server copy and so discards an
-      // edit the server has never seen. latestServerRev is only ever
-      // written from a server response this client received, so a genuinely
-      // concurrent write from a second tab still conflicts as it should.
-      save: (d, force) => putArc(forSave(d), force),
+      save: (d, force) => putArc(d, force),
+      // The single re-stamp site for the whole app. rev is a server
+      // concurrency token and a document reaches the engine carrying
+      // whatever rev it was built from, which can be stale by two routes: an
+      // edit made while a save is in flight comes off a store still holding
+      // the pre-save rev, and an edit made after an undo comes off a
+      // restored snapshot holding the rev it had when that snapshot was
+      // captured. Sent as it stands, either is a 409 against this client's
+      // own save, and the banner that raises offers Reload, which replaces
+      // the local document with the server copy and so discards an edit the
+      // server has never seen. Applied inside the engine rather than here at
+      // the save call, the mirror is keyed off the same stamped object, so a
+      // tab killed mid-throttle still offers the edit back on reopen.
+      // latestServerRev is only ever written from a server response this
+      // client received, so a genuinely concurrent write from a second tab
+      // still conflicts as it should.
+      atServerRev: forSave,
       onState: (state) => {
         useArcStore.getState().setSaveState(state);
         if (state === "saving") setErrorMessage(null);
@@ -140,19 +157,6 @@ export function ArcWorkspace({ id, children }: { id: string; children: ReactNode
     autosaveRef.current?.changed(next);
   }
 
-  /**
-   * Every document goes through this on its way to the wire, and undo and
-   * redo also hand what they restore through it before reporting the edit.
-   * `restored.rev` is whatever it was when the screen or the history step it
-   * came from was built, which the server may since have moved past (see
-   * latestServerRev's doc comment in store.ts); only `rev` is re-stamped, so
-   * the content itself is sent exactly as it was produced.
-   */
-  function forSave(restored: ArcDoc): ArcDoc {
-    const latestServerRev = useArcStore.getState().latestServerRev;
-    return latestServerRev === null ? restored : { ...restored, rev: latestServerRev };
-  }
-
   if (!doc) return <main className="page">Loading</main>;
 
   return (
@@ -183,12 +187,15 @@ export function ArcWorkspace({ id, children }: { id: string; children: ReactNode
         onUndo={() => {
           undo();
           const current = useArcStore.getState().doc;
-          if (current) autosaveRef.current?.changed(forSave(current));
+          // No forSave here any more: the engine stamps every document it
+          // takes. A second re-stamp site is exactly how the mirror key and
+          // the PUT drifted apart in the first place.
+          if (current) autosaveRef.current?.changed(current);
         }}
         onRedo={() => {
           redo();
           const current = useArcStore.getState().doc;
-          if (current) autosaveRef.current?.changed(forSave(current));
+          if (current) autosaveRef.current?.changed(current);
         }}
         showNotice={tab !== "summarize"}
         conflictDoc={conflictDoc}

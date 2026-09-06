@@ -48,6 +48,17 @@ export function localStorageMirror(storage: Storage): MirrorPort {
 
 export interface AutosaveDeps {
   save(doc: ArcDoc, force: boolean): Promise<SaveResult>;
+  /**
+   * Stamp a document with the rev this client believes the server holds.
+   * `rev` is a server concurrency token, not user content: a document
+   * reaching this engine carries whatever rev the store or the history step
+   * it was built from happened to hold, which a completed save may already
+   * have moved past. This is applied at every point where `pending` is set,
+   * which makes it the ONE re-stamp site in the app: the mirror is keyed off
+   * the same object that goes on the wire, so the key a reopen reads at and
+   * the rev the PUT carries can never disagree.
+   */
+  atServerRev(doc: ArcDoc): ArcDoc;
   onState(state: SaveState): void;
   onSaved(doc: ArcDoc): void;
   onConflict(serverDoc: ArcDoc): void;
@@ -185,7 +196,19 @@ export function createAutosave(deps: AutosaveDeps): Autosave {
             // too: this is a fresh unsaved run starting now, not a
             // continuation of the run that just finished saving, so its
             // own throttle window should start from here.
-            if (pending) deps.mirror.write(pending);
+            //
+            // The REV is re-stamped as well, and that is what keeps this
+            // edit recoverable. deps.onSaved above has just advanced this
+            // client's idea of the server rev; the pending edit was built
+            // from a store still holding the pre-save one. Mirrored under
+            // that stale key, an abrupt kill inside the throttle window
+            // would leave the reopen (which reads at the rev the server
+            // hands back) unable to find it, and this app has no delete
+            // affordance and no other copy.
+            if (pending) {
+              pending = deps.atServerRev(pending);
+              deps.mirror.write(pending);
+            }
             firstChangeAt = Date.now();
             deps.onState("unsaved");
             scheduleNormal();
@@ -252,9 +275,10 @@ export function createAutosave(deps: AutosaveDeps): Autosave {
 
   return {
     changed(doc) {
+      const stamped = deps.atServerRev(doc);
       if (pending === null) firstChangeAt = Date.now();
-      pending = doc;
-      deps.mirror.write(doc);
+      pending = stamped;
+      deps.mirror.write(stamped);
       deps.onState("unsaved");
       scheduleNormal();
     },
@@ -262,7 +286,7 @@ export function createAutosave(deps: AutosaveDeps): Autosave {
     retry(doc, opts) {
       paused = false;
       forceNext = opts?.force ?? false;
-      pending = doc;
+      pending = deps.atServerRev(doc);
       firstChangeAt = Date.now();
       offlineStep = 0;
       scheduleNormal();

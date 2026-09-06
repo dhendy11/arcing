@@ -9,6 +9,7 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { getArc, putArc } from "@/client/api";
+import { localStorageMirror } from "@/client/autosave";
 import { useArcStore } from "@/client/store";
 import { newArcDoc } from "@/core/doc";
 import type { ArcDoc } from "@/core/types";
@@ -146,6 +147,30 @@ test("an edit made while a save is in flight is sent at the rev the server now h
   expect(sentRevs).toEqual([1, 2]);
   expect(screen.queryByText(/changed somewhere else/)).toBeNull();
   expect(stored.summary.mainPoint).toBe("..");
+});
+
+test("an edit that lands mid-flight is mirrored at the rev the server now holds", async () => {
+  await mount();
+  const edit = screen.getByRole("button", { name: "probe edit" });
+
+  holdNextSave();
+  fireEvent.click(edit);
+  await settle(1000);
+
+  fireEvent.click(edit);
+  await act(async () => {
+    openGate();
+    await vi.advanceTimersByTimeAsync(0);
+  });
+
+  // The tab dies HERE, inside the throttle window, before the follow-up PUT
+  // goes out. Reopening loads the server's copy and reads the mirror at the
+  // rev that copy carries; mirrored under the pre-save key the edit is
+  // invisible, the Restore banner is never offered, and with no delete
+  // affordance and no other copy the edit is simply gone.
+  expect(stored.rev).toBe(2);
+  const recovered = localStorageMirror(window.localStorage).read(ID, stored.rev);
+  expect(recovered?.summary.mainPoint).toBe("..");
 });
 
 test("a write from somewhere else still conflicts", async () => {

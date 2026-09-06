@@ -24,6 +24,12 @@ function harness(results: SaveResult[]) {
   const onError = vi.fn();
   const auto = createAutosave({
     save,
+    // Identity: this suite drives the engine directly and never advances a
+    // rev, so there is nothing to re-stamp. The engine applying it to every
+    // pending document is covered where it matters, in
+    // src/components/ArcWorkspace.test.tsx, against a fake server that does
+    // increment rev.
+    atServerRev: (d) => d,
     onState,
     onSaved,
     onConflict,
@@ -171,6 +177,12 @@ test("a flush during an in-flight save issues no second PUT", async () => {
   const onState = vi.fn();
   const auto = createAutosave({
     save,
+    // Identity: this suite drives the engine directly and never advances a
+    // rev, so there is nothing to re-stamp. The engine applying it to every
+    // pending document is covered where it matters, in
+    // src/components/ArcWorkspace.test.tsx, against a fake server that does
+    // increment rev.
+    atServerRev: (d) => d,
     onState,
     onSaved: vi.fn(),
     onConflict: vi.fn(),
@@ -209,6 +221,12 @@ test("continuous typing still produces saves, spaced at least five seconds apart
   });
   const auto = createAutosave({
     save,
+    // Identity: this suite drives the engine directly and never advances a
+    // rev, so there is nothing to re-stamp. The engine applying it to every
+    // pending document is covered where it matters, in
+    // src/components/ArcWorkspace.test.tsx, against a fake server that does
+    // increment rev.
+    atServerRev: (d) => d,
     onState: vi.fn(),
     onSaved: vi.fn(),
     onConflict: vi.fn(),
@@ -241,6 +259,12 @@ test("a save that throws synchronously does not wedge autosave forever", async (
   });
   const auto = createAutosave({
     save,
+    // Identity: this suite drives the engine directly and never advances a
+    // rev, so there is nothing to re-stamp. The engine applying it to every
+    // pending document is covered where it matters, in
+    // src/components/ArcWorkspace.test.tsx, against a fake server that does
+    // increment rev.
+    atServerRev: (d) => d,
     onState: vi.fn(),
     onSaved: vi.fn(),
     onConflict: vi.fn(),
@@ -269,6 +293,12 @@ test("a newer edit that arrived during a save is re-mirrored, not left only in m
   );
   const auto = createAutosave({
     save,
+    // Identity: this suite drives the engine directly and never advances a
+    // rev, so there is nothing to re-stamp. The engine applying it to every
+    // pending document is covered where it matters, in
+    // src/components/ArcWorkspace.test.tsx, against a fake server that does
+    // increment rev.
+    atServerRev: (d) => d,
     onState: vi.fn(),
     onSaved: vi.fn(),
     onConflict: vi.fn(),
@@ -306,6 +336,12 @@ test("stop suppresses a save that resolves after unmount", async () => {
   const onSaved = vi.fn();
   const auto = createAutosave({
     save,
+    // Identity: this suite drives the engine directly and never advances a
+    // rev, so there is nothing to re-stamp. The engine applying it to every
+    // pending document is covered where it matters, in
+    // src/components/ArcWorkspace.test.tsx, against a fake server that does
+    // increment rev.
+    atServerRev: (d) => d,
     onState,
     onSaved,
     onConflict: vi.fn(),

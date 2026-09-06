@@ -346,15 +346,27 @@ button {
   padding: 0 16px;
 }
 
+.bar button:disabled {
+  cursor: default;
+}
+
 /* Summarize is disabled on every fresh arc and Undo on every arc load, so
    this is the frame's most-seen state. Ink at 0.7 composites to
    rgb(95,92,90) on paper, 6.28:1, which is the same dim already measured
    for an unfit palette row; the user-agent grey it replaces was 1.97:1. The
    whole button dims, border included, so the control still reads as inert
-   without a sixth colour. */
-.bar button:disabled {
+   without a sixth colour.
+
+   The SELECTED tab is excluded, and that exclusion is load-bearing: the
+   rule above paints a selected tab's label var(--accent), and accent at 0.7
+   composites to rgb(95,129,225) on paper, 3.47:1, under the binding floor.
+   Selected AND disabled is reachable (undo the top-level relate while
+   standing on Summarize, or deep-link an unrooted arc), so that state keeps
+   full-strength accent at 6.32:1, exactly as it rendered before this rule
+   existed. The tab a reader is standing on does not need an inert cue: it
+   is the one tab tapping cannot take them anywhere new. */
+.bar button:disabled:not([aria-selected="true"]) {
   opacity: 0.7;
-  cursor: default;
 }
 
 .frame-reference {
