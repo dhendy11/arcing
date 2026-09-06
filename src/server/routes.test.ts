@@ -1,4 +1,4 @@
-import { mkdtemp } from "node:fs/promises";
+import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
@@ -11,6 +11,7 @@ import { SESSION_COOKIE, hashPassword, signSession } from "./session";
 
 const SECRET = "routes-secret";
 const envBefore = { ...process.env };
+let dataDir: string;
 
 function signedIn(url: string, init: RequestInit = {}): Request {
   const token = signSession(Date.now() + 60_000, SECRET);
@@ -25,12 +26,14 @@ beforeEach(async () => {
   process.env.SESSION_SECRET = SECRET;
   process.env.APP_PASSWORD_HASH = hashPassword("hunter2");
   process.env.ESV_API_KEY = "KEY";
-  process.env.DATA_DIR = await mkdtemp(path.join(tmpdir(), "arcing-routes-"));
+  dataDir = await mkdtemp(path.join(tmpdir(), "arcing-routes-"));
+  process.env.DATA_DIR = dataDir;
 });
 
-afterEach(() => {
+afterEach(async () => {
   vi.unstubAllGlobals();
   process.env = { ...envBefore };
+  await rm(dataDir, { recursive: true, force: true });
 });
 
 async function createPasted(reference = "Romans 12:1-2", text = "one two three"): Promise<ArcDoc> {
@@ -41,6 +44,10 @@ async function createPasted(reference = "Romans 12:1-2", text = "one two three")
   return (await res.json()) as ArcDoc;
 }
 
+// loginLimiter (server/rateLimit.ts) is a module-level singleton with no
+// reset between tests, so the three login tests below each use a distinct
+// x-forwarded-for value; reusing an IP would fail confusingly on whichever
+// test ran second.
 test("the right password sets the session cookie", async () => {
   const res = await login(
     new Request("https://x.test/api/login", {
@@ -147,7 +154,7 @@ test("a put at the loaded rev saves, bumps the rev and stamps updatedAt", async 
   expect(res.status).toBe(200);
   expect(saved.rev).toBe(2);
   expect(saved.summary.mainPoint).toBe("Present your bodies.");
-  expect(saved.updatedAt >= doc.updatedAt).toBe(true);
+  expect(saved.updatedAt > doc.updatedAt).toBe(true);
 });
 
 test("a put at a stale rev is a 409 carrying the server copy", async () => {
@@ -236,6 +243,46 @@ test("a PUT body with an arc missing its members array is a 400, not a 500", asy
   const res = await putArc(
     signedIn(`https://x.test/api/arcs/${doc.id}`, { method: "PUT", body: JSON.stringify(broken) }),
     { params: Promise.resolve({ id: doc.id }) }
+  );
+  expect(res.status).toBe(400);
+});
+
+test("a PUT body missing passage entirely is a 400, not a 500", async () => {
+  const doc = await createPasted();
+  const broken = { ...doc, passage: undefined };
+  const res = await putArc(
+    signedIn(`https://x.test/api/arcs/${doc.id}`, { method: "PUT", body: JSON.stringify(broken) }),
+    { params: Promise.resolve({ id: doc.id }) }
+  );
+  expect(res.status).toBe(400);
+});
+
+test("a PUT body with passage.text missing on a doc with a proposition is a 400, not a 500", async () => {
+  const doc = await createPasted();
+  const broken = { ...doc, passage: { ...doc.passage, text: undefined } };
+  const res = await putArc(
+    signedIn(`https://x.test/api/arcs/${doc.id}`, { method: "PUT", body: JSON.stringify(broken) }),
+    { params: Promise.resolve({ id: doc.id }) }
+  );
+  expect(res.status).toBe(400);
+});
+
+test("a PUT body marked complete with summary.mainPoint missing is a 400, not a 500", async () => {
+  const doc = await createPasted();
+  const broken = { ...doc, markedComplete: true, summary: { ...doc.summary, mainPoint: undefined } };
+  const res = await putArc(
+    signedIn(`https://x.test/api/arcs/${doc.id}`, { method: "PUT", body: JSON.stringify(broken) }),
+    { params: Promise.resolve({ id: doc.id }) }
+  );
+  expect(res.status).toBe(400);
+});
+
+test("an oversized reference on POST is a 400, not a 500", async () => {
+  const res = await createArcRoute(
+    signedIn("https://x.test/api/arcs", {
+      method: "POST",
+      body: JSON.stringify({ reference: `Romans ${"a".repeat(70)}`, text: "one two three" }),
+    })
   );
   expect(res.status).toBe(400);
 });

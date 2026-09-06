@@ -19,20 +19,22 @@ export async function GET(req: Request, ctx: Context): Promise<Response> {
 
 /**
  * validateDoc and deriveStatus are the core layer: they assume a shaped
- * ArcDoc and index straight into its arrays (propositions, arcs, arc.members,
- * summary.levels). A PUT body is untrusted JSON, not a typed ArcDoc, so a
- * body that is not an object, or is missing one of those arrays, would throw
- * out of validateDoc/deriveStatus as an unhandled 500 rather than the 400 an
- * invalid request should get. This checks only the shape those two functions
- * walk without checking, before the body is cast and handed to them; it is
- * not a restatement of validateDoc's semantic rules.
+ * ArcDoc and index straight into its fields (propositions, arcs,
+ * arc.members, summary.levels, summary.mainPoint, passage.text). A PUT body
+ * is untrusted JSON, not a typed ArcDoc, so a body missing one of those would
+ * throw out of validateDoc/deriveStatus as an unhandled 500 rather than the
+ * 400 an invalid request should get. This checks only the shape those two
+ * functions dereference without checking, before the body is cast and
+ * handed to them; it is not a restatement of validateDoc's semantic rules.
  */
 function hasArcDocShape(value: unknown): value is ArcDoc {
   if (typeof value !== "object" || value === null) return false;
   const doc = value as Partial<ArcDoc>;
   if (typeof doc.id !== "string" || typeof doc.rev !== "number") return false;
   if (!Array.isArray(doc.propositions) || !Array.isArray(doc.arcs)) return false;
+  if (typeof doc.passage !== "object" || doc.passage === null || typeof doc.passage.text !== "string") return false;
   if (typeof doc.summary !== "object" || doc.summary === null || !Array.isArray(doc.summary.levels)) return false;
+  if (typeof doc.summary.mainPoint !== "string") return false;
   return doc.arcs.every((arc) => typeof arc === "object" && arc !== null && Array.isArray(arc.members));
 }
 

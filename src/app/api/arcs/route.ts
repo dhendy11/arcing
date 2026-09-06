@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { arcId, localDate, newArcDoc } from "@/core/doc";
+import { arcId, localDate, newArcDoc, referenceSlug } from "@/core/doc";
 import { validateDoc } from "@/core/validate";
 import { listArcIds, listSummaries, writeArc } from "@/server/arcStore";
 import { EsvUnavailableError, fetchPassage } from "@/server/esv";
@@ -8,6 +8,15 @@ import { hasValidSession } from "@/server/session";
 
 /** The box runs America/New_York; a Saturday-night arc is filed on Saturday. */
 const ARC_TIMEZONE = "America/New_York";
+
+/**
+ * isSafeArcId (server/arcStore.ts) caps an arc id at 80 characters. The date
+ * prefix arcId prepends is 11 of those (YYYY-MM-DD plus the joining hyphen),
+ * leaving 69 for the reference's slug. Reject an oversized reference here,
+ * before any ESV fetch or write, rather than letting writeArc fail later on
+ * an id isSafeArcId refuses.
+ */
+const MAX_REFERENCE_SLUG_LENGTH = 69;
 
 export async function GET(req: Request): Promise<Response> {
   if (!hasValidSession(req)) return unauthorized();
@@ -27,6 +36,7 @@ export async function POST(req: Request): Promise<Response> {
     return badRequest("unreadable body");
   }
   if (!reference) return badRequest("a reference is required");
+  if (referenceSlug(reference).length > MAX_REFERENCE_SLUG_LENGTH) return badRequest("reference is too long");
 
   let canonical = reference;
   let text: string;
