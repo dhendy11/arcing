@@ -30,7 +30,6 @@ interface ArcState {
   setSaveState: (state: SaveState) => void;
   setSelection: (selection: Member[]) => void;
   setConflictDoc: (doc: ArcDoc | null) => void;
-  setLatestServerRev: (rev: number | null) => void;
 }
 
 export const useArcStore = create<ArcState>()(
@@ -53,7 +52,6 @@ export const useArcStore = create<ArcState>()(
       setSaveState: (saveState) => set({ saveState }),
       setSelection: (selection) => set({ selection }),
       setConflictDoc: (conflictDoc) => set({ conflictDoc }),
-      setLatestServerRev: (latestServerRev) => set({ latestServerRev }),
     }),
     {
       limit: UNDO_LIMIT,

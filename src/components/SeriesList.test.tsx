@@ -38,6 +38,22 @@ test("a row carries the date, the reference, the status and the main point", () 
   expect(within(row).getByText("Grace is no licence to sin.")).toBeInTheDocument();
 });
 
+test("the row prints the id's own date, not the UTC day off createdAt", async () => {
+  // Filed at 21:00 on Saturday in America/New_York, which is Sunday in UTC.
+  // The id is the record of the day the arc belongs to; the timestamp is
+  // not, and printing it would file a Saturday-night arc under Sunday on
+  // the one surface where the dated series is the point.
+  const lateSaturday: ArcSummary = {
+    id: "2026-09-05-romans-8-28", reference: "Romans 8:28", status: "split",
+    createdAt: "2026-09-06T01:00:00.000Z", updatedAt: "2026-09-06T01:00:00.000Z",
+    mainPoint: "",
+  };
+  render(<SeriesList items={[lateSaturday]} onOpen={vi.fn()} onNew={vi.fn()} />);
+  const row = screen.getAllByRole("listitem")[0];
+  expect(within(row).getByText("2026-09-05")).toBeInTheDocument();
+  expect(within(row).queryByText("2026-09-06")).toBeNull();
+});
+
 test("tapping a row opens that arc", async () => {
   const onOpen = vi.fn();
   render(<SeriesList items={[newer]} onOpen={onOpen} onNew={vi.fn()} />);

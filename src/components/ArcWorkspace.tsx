@@ -63,7 +63,19 @@ export function ArcWorkspace({ id, children }: { id: string; children: ReactNode
 
     const store = useArcStore.getState();
     const autosave = createAutosave({
-      save: (d, force) => putArc(d, force),
+      // forSave at the SEND boundary, not only at the undo and redo
+      // callsites: rev is a server concurrency token and a document can
+      // reach this point carrying a stale one by two other routes. An edit
+      // made while a save is in flight is built from a store whose rev is
+      // still the pre-save value, and an edit made after an undo derives
+      // from a restored snapshot carrying the rev it had when that snapshot
+      // was captured. Either one sent as it stands is a 409 against this
+      // client's own save, and the banner that raises offers Reload, which
+      // replaces the local document with the server copy and so discards an
+      // edit the server has never seen. latestServerRev is only ever
+      // written from a server response this client received, so a genuinely
+      // concurrent write from a second tab still conflicts as it should.
+      save: (d, force) => putArc(forSave(d), force),
       onState: (state) => {
         useArcStore.getState().setSaveState(state);
         if (state === "saving") setErrorMessage(null);
@@ -99,8 +111,15 @@ export function ArcWorkspace({ id, children }: { id: string; children: ReactNode
     });
     autosaveRef.current = autosave;
 
+    // A slow load for arc A can resolve after this effect has been cleaned
+    // up and re-run for arc B (the workspace remounts on an id change), and
+    // would then paint A's document inside B's frame until B's own load
+    // lands. The flag is the standard guard: the cleanup below sets it, and
+    // a resolved load that finds it set drops what it fetched.
+    let cancelled = false;
     void (async () => {
       const loaded = await getArc(id);
+      if (cancelled) return;
       if (!loaded) {
         router.push("/");
         return;
@@ -110,6 +129,7 @@ export function ArcWorkspace({ id, children }: { id: string; children: ReactNode
     })();
 
     return () => {
+      cancelled = true;
       autosave.stop();
       useArcStore.getState().leaveArc();
     };
@@ -121,11 +141,12 @@ export function ArcWorkspace({ id, children }: { id: string; children: ReactNode
   }
 
   /**
-   * What undo/redo hand to autosave. `restored.rev` is whatever it was when
-   * that history step was captured, which the server may since have moved
-   * past (see latestServerRev's doc comment in store.ts); only `rev` is
-   * re-stamped, so the restored content itself is sent exactly as undo or
-   * redo produced it.
+   * Every document goes through this on its way to the wire, and undo and
+   * redo also hand what they restore through it before reporting the edit.
+   * `restored.rev` is whatever it was when the screen or the history step it
+   * came from was built, which the server may since have moved past (see
+   * latestServerRev's doc comment in store.ts); only `rev` is re-stamped, so
+   * the content itself is sent exactly as it was produced.
    */
   function forSave(restored: ArcDoc): ArcDoc {
     const latestServerRev = useArcStore.getState().latestServerRev;

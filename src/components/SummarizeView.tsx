@@ -16,13 +16,18 @@ export function SummarizeView({ doc, onChange }: { doc: ArcDoc; onChange: (doc: 
   // Confirm before a Remove that would discard written text. Tracks which
   // doc it was raised against for the same reason SplitView's pending
   // split/rejoin does: an Undo/Redo landing while this is open must not let
-  // a stale index apply to a document the level no longer describes. This
-  // is React's documented adjusting-state-during-render pattern, not a
+  // a stale index apply to a document the level no longer describes. The
+  // comparison is BY VALUE over the levels, never by reference on the doc:
+  // a completed autosave hands this screen a freshly parsed object on every
+  // save tick, so a reference test dismissed the dialog a second or so
+  // after it opened, with nothing removed and nothing to invalidate it.
+  // SplitView and RelateView solve the same class the same way. This is
+  // React's documented adjusting-state-during-render pattern, not a
   // useEffect (the project's react-hooks/set-state-in-effect rule rejects
   // an effect that calls setState unconditionally in its body).
   const [pendingRemove, setPendingRemove] = useState<number | null>(null);
   const [pendingForDoc, setPendingForDoc] = useState(doc);
-  if (doc !== pendingForDoc) {
+  if (JSON.stringify(doc.summary.levels) !== JSON.stringify(pendingForDoc.summary.levels)) {
     setPendingForDoc(doc);
     setPendingRemove(null);
   }

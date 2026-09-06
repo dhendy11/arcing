@@ -32,6 +32,21 @@ button, a, input, textarea, select { font: inherit; }
 button, .target { min-height: 44px; min-width: 44px; }
 input, textarea, select { min-height: 44px; }
 
+/* No control falls through to the user-agent's button chrome. Left
+   undeclared, Chromium paints a button rgb(0,0,0) on rgb(239,239,239) and a
+   disabled one rgba(16,16,16,0.3), which composites to rgb(180,178,176) on
+   paper at 1.99:1 and fails the binding 4.5:1 floor; the fill and the near
+   black are two more colours outside the closed five-token set as well.
+   Declared once here so a control that names no surface of its own still
+   lands inside the palette. Every rule below that wants a fill, a flat edge
+   or a different colour states it and wins on specificity. */
+button {
+  background: none;
+  color: var(--ink);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+}
+
 .passage { font-family: var(--serif); }
 
 /* Reading measure: content never runs flush to the corner. */
@@ -207,6 +222,10 @@ input, textarea, select { min-height: 44px; }
   flex-direction: column;
   gap: 16px;
   background: var(--paper);
+  /* Paper on paper with the backdrops gone: without an edge the panel reads
+     as text floating over the list rather than as a surface above it. The
+     one derived neutral already used for every other border in the file. */
+  border: 1px solid var(--rule);
   border-radius: 12px;
   padding: 24px;
 }
@@ -320,6 +339,24 @@ input, textarea, select { min-height: 44px; }
   font-weight: 600;
 }
 
+/* Series, Undo and Redo carry no fill of their own, so the base button rule
+   is their whole treatment; only the padding needs to match the tabs beside
+   them. */
+.bar > button {
+  padding: 0 16px;
+}
+
+/* Summarize is disabled on every fresh arc and Undo on every arc load, so
+   this is the frame's most-seen state. Ink at 0.7 composites to
+   rgb(95,92,90) on paper, 6.28:1, which is the same dim already measured
+   for an unfit palette row; the user-agent grey it replaces was 1.97:1. The
+   whole button dims, border included, so the control still reads as inert
+   without a sixth colour. */
+.bar button:disabled {
+  opacity: 0.7;
+  cursor: default;
+}
+
 .frame-reference {
   font-weight: 600;
 }
@@ -390,6 +427,9 @@ input, textarea, select { min-height: 44px; }
   flex-direction: column;
   gap: 16px;
   background: var(--paper);
+  /* Same reason as .sheet: a paper panel on a paper page needs an edge, or
+     the dissolve confirm reads as loose text over the screen behind it. */
+  border: 1px solid var(--rule);
   border-radius: 12px;
   padding: 24px;
 }

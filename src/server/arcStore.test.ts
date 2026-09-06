@@ -71,8 +71,9 @@ test("ids are listed and summaries come back newest first", async () => {
   await writeArc({ ...later, summary: { ...later.summary, mainPoint: "Present your bodies." } });
 
   expect((await listArcIds()).sort()).toEqual(["2026-09-01-a", "2026-09-05-b"]);
-  const summaries = await listSummaries();
+  const { summaries, skipped } = await listSummaries();
   expect(summaries.map((s) => s.id)).toEqual(["2026-09-05-b", "2026-09-01-a"]);
+  expect(skipped).toEqual([]);
   expect(summaries[0]).toEqual({
     id: "2026-09-05-b",
     reference: "Romans 12:1-2",
@@ -92,11 +93,16 @@ test("an id that could escape the data directory is refused", async () => {
   await expect(writeArc(doc("../evil", "Romans 1:1", "2026-09-05T10:00:00Z"))).rejects.toThrow(/unsafe arc id/);
 });
 
-test("a corrupt file is skipped rather than breaking the list", async () => {
+test("a corrupt file is skipped rather than breaking the list, and is named as skipped", async () => {
   await writeArc(doc("a-1", "Romans 1:1", "2026-09-05T10:00:00Z"));
   await writeFile(path.join(arcsDir(), "broken.json"), "{ not json", "utf8");
-  const summaries = await listSummaries();
+  const { summaries, skipped } = await listSummaries();
   expect(summaries.map((s) => s.id)).toEqual(["a-1"]);
+  // The skip is right; losing the file in silence is not. The same catch
+  // covers a permissions or disk fault, and with no delete affordance
+  // anywhere in the app an arc that just stops being listed reads as one
+  // that vanished.
+  expect(skipped).toEqual(["broken"]);
 });
 
 test("readArc rejects rather than returning null for a corrupt file", async () => {
@@ -108,8 +114,9 @@ test("readArc rejects rather than returning null for a corrupt file", async () =
 test("a valid-JSON file of the wrong shape is skipped rather than breaking the list", async () => {
   await writeArc(doc("a-1", "Romans 1:1", "2026-09-05T10:00:00Z"));
   await writeFile(path.join(arcsDir(), "wrong-shape.json"), "{}", "utf8");
-  const summaries = await listSummaries();
+  const { summaries, skipped } = await listSummaries();
   expect(summaries.map((s) => s.id)).toEqual(["a-1"]);
+  expect(skipped).toEqual(["wrong-shape"]);
   await expect(readArc("wrong-shape")).rejects.toThrow();
 });
 

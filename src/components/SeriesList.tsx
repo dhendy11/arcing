@@ -29,7 +29,13 @@ export function SeriesList({
           {sorted.map((item) => (
             <li key={item.id}>
               <button type="button" onClick={() => onOpen(item.id)}>
-                <span className="date">{item.createdAt.slice(0, 10)}</span>
+                {/* The id's own date prefix, never the UTC day off
+                    createdAt. The id is filed in America/New_York
+                    (src/app/api/arcs/route.ts) so a Saturday-night arc is
+                    filed on Saturday; the timestamp would print Sunday for
+                    anything made after 20:00 ET and undo that on the one
+                    surface where the dated series is the point. */}
+                <span className="date">{item.id.slice(0, 10)}</span>
                 <span className="reference">{item.reference}</span>
                 <span className="status">{item.status}</span>
                 <span className="main-point">{item.mainPoint}</span>

@@ -21,6 +21,25 @@ const eslintConfig = defineConfig([
       ],
     },
   },
+  {
+    // The mirror image of the rule above, and the one that guards a secret:
+    // src/server holds SESSION_SECRET, APP_PASSWORD_HASH and ESV_API_KEY,
+    // and everything under src/client and src/components is compiled into
+    // the browser bundle. Nothing crosses that line today; this is what
+    // keeps it that way. Route handlers under src/app/api are server code
+    // and are deliberately not covered.
+    files: ["src/client/**/*.{ts,tsx}", "src/components/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            { group: ["**/server/*", "@/server/*"], message: "Browser code never imports src/server: the secrets live there." },
+          ],
+        },
+      ],
+    },
+  },
 ]);
 
 export default eslintConfig;

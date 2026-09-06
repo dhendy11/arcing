@@ -85,8 +85,22 @@ export async function writeArc(doc: ArcDoc): Promise<void> {
   }
 }
 
-export async function listSummaries(): Promise<ArcSummary[]> {
+/**
+ * The series list, plus the ids that could not be read. Skipping an
+ * unreadable file is deliberate: one corrupt arc must not take the whole
+ * list down. But the catch below also swallows EACCES and EIO, and this app
+ * has no delete affordance and no second surface, so an arc that silently
+ * drops out of this list has, as far as its owner can tell, vanished. The
+ * ids ride alongside so the page can say how many are missing.
+ */
+export interface SeriesListing {
+  summaries: ArcSummary[];
+  skipped: string[];
+}
+
+export async function listSummaries(): Promise<SeriesListing> {
   const ids = await listArcIds();
+  const skipped: string[] = [];
   const docs = await Promise.all(
     ids.map(async (id) => {
       try {
@@ -94,11 +108,12 @@ export async function listSummaries(): Promise<ArcSummary[]> {
       } catch {
         // A corrupt or wrong-shaped file is skipped in a list; readArc
         // called directly for that id still throws.
+        skipped.push(id);
         return null;
       }
     }),
   );
-  return docs
+  const summaries = docs
     .filter((d): d is ArcDoc => d !== null)
     .map((d) => ({
       id: d.id,
@@ -109,4 +124,5 @@ export async function listSummaries(): Promise<ArcSummary[]> {
       mainPoint: d.summary.mainPoint,
     }))
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  return { summaries, skipped: skipped.sort() };
 }

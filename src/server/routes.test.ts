@@ -125,7 +125,7 @@ test("an ESV failure is a 503 and writes no file", async () => {
   expect(res.status).toBe(503);
   expect(await res.json()).toEqual({ error: "esv_unavailable" });
   const list = await (await listArcs(signedIn("https://x.test/api/arcs"))).json();
-  expect(list).toEqual([]);
+  expect(list).toEqual({ arcs: [], unreadable: [] });
 });
 
 test("a second arc for the same reference on the same day takes the -2 suffix", async () => {
@@ -292,7 +292,7 @@ test("an oversized reference on POST is a 400, not a 500", async () => {
   );
   expect(res.status).toBe(400);
   const list = await (await listArcs(signedIn("https://x.test/api/arcs"))).json();
-  expect(list).toEqual([]);
+  expect(list).toEqual({ arcs: [], unreadable: [] });
 });
 
 test("the reported 68-character-slug collision no longer 500s on the second post", async () => {
@@ -314,5 +314,5 @@ test("the reported 68-character-slug collision no longer 500s on the second post
   const second = await post();
   expect(second.status).toBe(400);
   const list = await (await listArcs(signedIn("https://x.test/api/arcs"))).json();
-  expect(list).toEqual([]);
+  expect(list).toEqual({ arcs: [], unreadable: [] });
 });

@@ -45,10 +45,16 @@ export async function logout(): Promise<void> {
   }
 }
 
-export async function listArcs(): Promise<ArcSummary[] | "unauthorized"> {
+/** What GET /api/arcs returns: the rows, plus the ids it could not read. */
+export interface ArcList {
+  arcs: ArcSummary[];
+  unreadable: string[];
+}
+
+export async function listArcs(): Promise<ArcList | "unauthorized"> {
   const res = await fetch("/api/arcs");
   if (res.status === 401) return "unauthorized";
-  return (await res.json()) as ArcSummary[];
+  return (await res.json()) as ArcList;
 }
 
 export async function createArc(input: { reference: string; text?: string }): Promise<CreateResult> {

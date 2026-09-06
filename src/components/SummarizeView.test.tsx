@@ -88,6 +88,29 @@ test("removing a level with text confirms first, then keeps the topmost connecto
   expect(next.summary.levels).toEqual([{ text: "bottom", connector: "" }]);
 });
 
+test("an autosave echo while the remove confirm is open does not dismiss it", async () => {
+  const onChange = vi.fn();
+  const doc = ready();
+  const { rerender } = render(<SummarizeView doc={doc} onChange={onChange} />);
+
+  await userEvent.click(screen.getByRole("button", { name: "Remove level 1" }));
+  expect(screen.getByRole("dialog", { name: "This removes what you wrote" })).toBeInTheDocument();
+
+  // A completed autosave hands this screen a freshly parsed doc object on
+  // every save tick, one to five seconds after the dialog opens, with only
+  // rev and updatedAt actually different. Compared by reference that closed
+  // the confirm with nothing removed, which made the gate unusable.
+  const echoed: ArcDoc = {
+    ...doc,
+    rev: doc.rev + 1,
+    updatedAt: "2026-09-05T15:00:01.000Z",
+    summary: { ...doc.summary, levels: doc.summary.levels.map((l) => ({ ...l })) },
+  };
+  rerender(<SummarizeView doc={echoed} onChange={onChange} />);
+
+  expect(screen.getByRole("dialog", { name: "This removes what you wrote" })).toBeInTheDocument();
+});
+
 test("removing an empty level removes it on one tap, no confirm", async () => {
   const onChange = vi.fn();
   const doc = ready();

@@ -21,9 +21,17 @@ const ARC_TIMEZONE = "America/New_York";
  */
 const MAX_REFERENCE_SLUG_LENGTH = 66;
 
+/**
+ * The body is an object rather than the bare array it used to be. An arc
+ * file that cannot be read is skipped from the list, and with no delete
+ * affordance anywhere in this app a silent skip reads as an arc that
+ * vanished, so the skipped ids travel with the rows and the series page
+ * prints how many there were.
+ */
 export async function GET(req: Request): Promise<Response> {
   if (!hasValidSession(req)) return unauthorized();
-  return NextResponse.json(await listSummaries());
+  const { summaries, skipped } = await listSummaries();
+  return NextResponse.json({ arcs: summaries, unreadable: skipped });
 }
 
 export async function POST(req: Request): Promise<Response> {
