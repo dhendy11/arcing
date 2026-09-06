@@ -20,6 +20,7 @@ if (typeof document !== "undefined") {
     Object.defineProperty(globalThis, "localStorage", {
       value: jsdomGlobal.window.localStorage,
       configurable: true,
+      writable: true,
     });
   }
 }

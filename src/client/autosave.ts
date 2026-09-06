@@ -52,6 +52,8 @@ export interface AutosaveDeps {
   onSaved(doc: ArcDoc): void;
   onConflict(serverDoc: ArcDoc): void;
   onUnauthorized(): void;
+  /** A response the client could not make sense of (see SaveResult's "error"). */
+  onError(message: string): void;
   mirror: MirrorPort;
   /** Usually document. Omit in a non-DOM context. */
   target?: EventTarget | null;
@@ -75,6 +77,17 @@ export function createAutosave(deps: AutosaveDeps): Autosave {
   let paused = false;
   let forceNext = false;
   let offlineStep = 0;
+  /** When the current unsaved run of edits started. Caps scheduleNormal's
+   * delay so continuous editing (a change arriving faster than the 1 s
+   * debounce) cannot push the save out forever; a PUT still goes out within
+   * THROTTLE_MS of the first change in the run. Cleared whenever pending
+   * returns to null and reset by retry(), which starts a fresh run. */
+  let firstChangeAt: number | null = null;
+  /** The in-flight save's own completion, or null when none is outstanding.
+   * A timer firing while this is set must not start a second PUT of the
+   * same document; flush() awaits it instead of racing it. */
+  let inFlightPromise: Promise<void> | null = null;
+  let stopped = false;
 
   const clearTimer = () => {
     if (timer !== null) clearTimeout(timer);
@@ -92,62 +105,94 @@ export function createAutosave(deps: AutosaveDeps): Autosave {
 
   const scheduleNormal = () => {
     const sinceLast = Date.now() - lastSaveAt;
-    schedule(Math.max(DEBOUNCE_MS, THROTTLE_MS - sinceLast));
+    let delay = Math.max(DEBOUNCE_MS, THROTTLE_MS - sinceLast);
+    if (firstChangeAt !== null) {
+      delay = Math.min(delay, Math.max(firstChangeAt + THROTTLE_MS - Date.now(), 0));
+    }
+    schedule(delay);
   };
 
   async function run(): Promise<void> {
-    if (paused || pending === null) return;
+    // inFlightPromise !== null means a save is already on the wire for the
+    // current pending doc. A timer firing here is a duplicate attempt, not a
+    // new one: no-op, because the in-flight save's own completion (the
+    // "saved" branch below) already reschedules against whatever pending
+    // is by the time it resolves.
+    if (paused || pending === null || inFlightPromise !== null) return;
     const sending = pending;
     const force = forceNext;
     forceNext = false;
     lastSaveAt = Date.now();
     deps.onState("saving");
 
-    const result = await deps.save(sending, force);
+    const attempt = (async (): Promise<void> => {
+      let result: SaveResult;
+      try {
+        result = await deps.save(sending, force);
+      } finally {
+        inFlightPromise = null;
+      }
+      if (stopped) return;
 
-    switch (result.kind) {
-      case "saved": {
-        offlineStep = 0;
-        deps.mirror.clear(sending.id);
-        deps.onSaved(result.doc);
-        if (pending === sending) {
-          pending = null;
-          deps.onState("saved");
-        } else {
-          deps.onState("unsaved");
-          scheduleNormal();
+      switch (result.kind) {
+        case "saved": {
+          offlineStep = 0;
+          deps.mirror.clear(sending.id);
+          deps.onSaved(result.doc);
+          if (pending === sending) {
+            pending = null;
+            firstChangeAt = null;
+            deps.onState("saved");
+          } else {
+            // A newer edit arrived while this save was in flight. It is
+            // still only mirrored under the just-cleared id, so rewrite it
+            // before the next attempt is scheduled.
+            if (pending) deps.mirror.write(pending);
+            deps.onState("unsaved");
+            scheduleNormal();
+          }
+          return;
         }
-        return;
+        case "conflict": {
+          paused = true;
+          clearTimer();
+          deps.onState("conflict");
+          deps.onConflict(result.serverDoc);
+          return;
+        }
+        case "unauthorized": {
+          paused = true;
+          clearTimer();
+          deps.onState("unsaved");
+          deps.onUnauthorized();
+          return;
+        }
+        case "offline": {
+          const wait = OFFLINE_BACKOFF_MS[Math.min(offlineStep, OFFLINE_BACKOFF_MS.length - 1)];
+          offlineStep += 1;
+          deps.onState("offline");
+          schedule(wait);
+          return;
+        }
+        case "error": {
+          paused = true;
+          clearTimer();
+          deps.onState("unsaved");
+          deps.onError(result.message);
+          return;
+        }
+        case "invalid": {
+          // A validation failure is a bug in the core, not a user path. Keep the
+          // edit pending so the next change retries it, and surface it.
+          console.error("save refused as invalid", result.violations);
+          deps.onState("unsaved");
+          return;
+        }
       }
-      case "conflict": {
-        paused = true;
-        clearTimer();
-        deps.onState("conflict");
-        deps.onConflict(result.serverDoc);
-        return;
-      }
-      case "unauthorized": {
-        paused = true;
-        clearTimer();
-        deps.onState("unsaved");
-        deps.onUnauthorized();
-        return;
-      }
-      case "offline": {
-        const wait = OFFLINE_BACKOFF_MS[Math.min(offlineStep, OFFLINE_BACKOFF_MS.length - 1)];
-        offlineStep += 1;
-        deps.onState("offline");
-        schedule(wait);
-        return;
-      }
-      case "invalid": {
-        // A validation failure is a bug in the core, not a user path. Keep the
-        // edit pending so the next change retries it, and surface it.
-        console.error("save refused as invalid", result.violations);
-        deps.onState("unsaved");
-        return;
-      }
-    }
+    })();
+
+    inFlightPromise = attempt;
+    await attempt;
   }
 
   const onVisibility = () => {
@@ -155,6 +200,11 @@ export function createAutosave(deps: AutosaveDeps): Autosave {
   };
 
   async function flush(): Promise<void> {
+    // Wait out any save already on the wire rather than racing a second PUT
+    // of the same base rev alongside it. Once it settles, try again: an edit
+    // that arrived during that save is still only in memory and the mirror,
+    // and a suspending tab will not get another chance.
+    if (inFlightPromise) await inFlightPromise;
     clearTimer();
     await run();
   }
@@ -163,6 +213,7 @@ export function createAutosave(deps: AutosaveDeps): Autosave {
 
   return {
     changed(doc) {
+      if (pending === null) firstChangeAt = Date.now();
       pending = doc;
       deps.mirror.write(doc);
       deps.onState("unsaved");
@@ -173,6 +224,7 @@ export function createAutosave(deps: AutosaveDeps): Autosave {
       paused = false;
       forceNext = opts?.force ?? false;
       pending = doc;
+      firstChangeAt = Date.now();
       offlineStep = 0;
       scheduleNormal();
     },
@@ -181,11 +233,14 @@ export function createAutosave(deps: AutosaveDeps): Autosave {
       paused = false;
       forceNext = false;
       offlineStep = 0;
+      firstChangeAt = null;
       clearTimer();
     },
     stop() {
+      stopped = true;
       clearTimer();
       pending = null;
+      firstChangeAt = null;
       deps.target?.removeEventListener("visibilitychange", onVisibility);
     },
   };

@@ -21,17 +21,19 @@ function harness(results: SaveResult[]) {
   const onSaved = vi.fn();
   const onConflict = vi.fn();
   const onUnauthorized = vi.fn();
+  const onError = vi.fn();
   const auto = createAutosave({
     save,
     onState,
     onSaved,
     onConflict,
     onUnauthorized,
+    onError,
     mirror: localStorageMirror(window.localStorage),
     target: document,
     isHidden: () => document.visibilityState === "hidden",
   });
-  return { auto, save, onState, onSaved, onConflict, onUnauthorized };
+  return { auto, save, onState, onSaved, onConflict, onUnauthorized, onError };
 }
 
 beforeEach(() => {
@@ -159,4 +161,115 @@ test("stop removes the visibility listener", async () => {
   document.dispatchEvent(new Event("visibilitychange"));
   await vi.advanceTimersByTimeAsync(5000);
   expect(h.save).not.toHaveBeenCalled();
+});
+
+test("a flush during an in-flight save issues no second PUT", async () => {
+  let resolveSave: (result: SaveResult) => void = () => {};
+  const save = vi.fn<(doc: ArcDoc, force: boolean) => Promise<SaveResult>>(
+    () => new Promise((resolve) => { resolveSave = resolve; }),
+  );
+  const onState = vi.fn();
+  const auto = createAutosave({
+    save,
+    onState,
+    onSaved: vi.fn(),
+    onConflict: vi.fn(),
+    onUnauthorized: vi.fn(),
+    onError: vi.fn(),
+    mirror: localStorageMirror(window.localStorage),
+    target: document,
+    isHidden: () => document.visibilityState === "hidden",
+  });
+
+  auto.changed(doc("a"));
+  await vi.advanceTimersByTimeAsync(1000);
+  expect(save).toHaveBeenCalledTimes(1);
+
+  // The save is still on the wire. A tab going hidden now must not fire a
+  // second PUT of the same base rev alongside it.
+  Object.defineProperty(document, "visibilityState", { value: "hidden", configurable: true });
+  document.dispatchEvent(new Event("visibilitychange"));
+  await vi.advanceTimersByTimeAsync(0);
+  expect(save).toHaveBeenCalledTimes(1);
+
+  resolveSave({ kind: "saved", doc: doc("a") });
+  await vi.advanceTimersByTimeAsync(0);
+  expect(save).toHaveBeenCalledTimes(1);
+  expect(onState).toHaveBeenLastCalledWith("saved");
+});
+
+test("continuous typing still produces a save at least every five seconds", async () => {
+  const h = harness([]);
+  for (let elapsed = 0; elapsed < 12_000; elapsed += 400) {
+    h.auto.changed(doc(`t${elapsed}`));
+    await vi.advanceTimersByTimeAsync(400);
+  }
+  expect(h.save.mock.calls.length).toBeGreaterThanOrEqual(2);
+});
+
+test("a newer edit that arrived during a save is re-mirrored, not left only in memory", async () => {
+  let resolveSave: (result: SaveResult) => void = () => {};
+  const save = vi.fn<(doc: ArcDoc, force: boolean) => Promise<SaveResult>>(
+    () => new Promise((resolve) => { resolveSave = resolve; }),
+  );
+  const auto = createAutosave({
+    save,
+    onState: vi.fn(),
+    onSaved: vi.fn(),
+    onConflict: vi.fn(),
+    onUnauthorized: vi.fn(),
+    onError: vi.fn(),
+    mirror: localStorageMirror(window.localStorage),
+    target: document,
+    isHidden: () => document.visibilityState === "hidden",
+  });
+
+  const first = doc("a");
+  auto.changed(first);
+  await vi.advanceTimersByTimeAsync(1000);
+  expect(save).toHaveBeenCalledTimes(1);
+
+  const second = doc("b");
+  auto.changed(second);
+  const key = mirrorKey(second.id, second.rev);
+  expect(window.localStorage.getItem(key)).not.toBeNull();
+
+  resolveSave({ kind: "saved", doc: first });
+  await vi.advanceTimersByTimeAsync(0);
+
+  // The completed save's mirror.clear(id) wipes every key for that id,
+  // including the newer edit's; it must be rewritten right after.
+  expect(JSON.parse(window.localStorage.getItem(key) as string).summary.mainPoint).toBe("b");
+});
+
+test("stop suppresses a save that resolves after unmount", async () => {
+  let resolveSave: (result: SaveResult) => void = () => {};
+  const save = vi.fn<(doc: ArcDoc, force: boolean) => Promise<SaveResult>>(
+    () => new Promise((resolve) => { resolveSave = resolve; }),
+  );
+  const onState = vi.fn();
+  const onSaved = vi.fn();
+  const auto = createAutosave({
+    save,
+    onState,
+    onSaved,
+    onConflict: vi.fn(),
+    onUnauthorized: vi.fn(),
+    onError: vi.fn(),
+    mirror: localStorageMirror(window.localStorage),
+    target: document,
+    isHidden: () => document.visibilityState === "hidden",
+  });
+
+  auto.changed(doc("a"));
+  await vi.advanceTimersByTimeAsync(1000);
+  expect(save).toHaveBeenCalledTimes(1);
+  const callsBefore = onState.mock.calls.length;
+
+  auto.stop();
+  resolveSave({ kind: "saved", doc: doc("a") });
+  await vi.advanceTimersByTimeAsync(0);
+
+  expect(onState.mock.calls.length).toBe(callsBefore);
+  expect(onSaved).not.toHaveBeenCalled();
 });
