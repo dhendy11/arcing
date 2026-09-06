@@ -1,0 +1,46 @@
+name: Deploy to box
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-box
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run build
+
+      - name: Assemble standalone bundle
+        run: |
+          cp -r .next/static .next/standalone/.next/static
+          # This repo has no public/ directory yet, so a bare cp -r public
+          # would fail the job. Copy it only if it shows up later.
+          if [ -d public ]; then
+            cp -r public .next/standalone/public
+          fi
+
+      - name: Ship to box and restart
+        env:
+          SSH_KEY: ${{ secrets.BOX_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.BOX_KNOWN_HOSTS }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "$KNOWN_HOSTS" >> ~/.ssh/known_hosts
+          rsync -az --delete .next/standalone/ deploy@155.138.231.13:/srv/deploy/arcing/current/
+          ssh deploy@155.138.231.13 'sudo systemctl restart arcing'

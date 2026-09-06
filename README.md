@@ -15,4 +15,6 @@ The design spec and build plan live in `docs/superpowers/specs/` and `docs/super
 
 ## Deploy
 
-Deployment files and the box kickoff steps live in `deploy/` and `KICKOFF.md` (added later in the build).
+Deployment files (systemd unit, Caddy vhost, backup additions, GitHub Actions
+workflow) live in `deploy/` and `.github/workflows/deploy-box.yml`. The
+human-and-box steps to stand the app up are in `KICKOFF.md`.

@@ -1,0 +1,16 @@
+arcing.bushidoacquisitions.com {
+	encode gzip
+	reverse_proxy 127.0.0.1:3006 {
+		# Next standalone Route Handlers build absolute redirects from the
+		# internal bind address and ignore Host and X-Forwarded-Host. Every
+		# new app on this box needs this rewrite (memory/vultr_box.md).
+		header_down Location "^https?://(localhost|127\.0\.0\.1):3006" "https://arcing.bushidoacquisitions.com"
+
+		# Caddy appends to an incoming X-Forwarded-For instead of replacing
+		# it, so a client-supplied first hop is attacker-controlled. The
+		# app already reads the last hop (src/server/rateLimit.ts), so this
+		# is defence in depth, not the fix, against a caller who tries to
+		# rotate identities past the login limiter.
+		header_up X-Forwarded-For {remote_host}
+	}
+}

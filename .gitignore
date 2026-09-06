@@ -8,3 +8,5 @@ playwright-report
 tsconfig.tsbuildinfo
 next-env.d.ts
 .superpowers/
+AGENTS.md
+CLAUDE.md
