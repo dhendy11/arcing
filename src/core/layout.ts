@@ -57,8 +57,19 @@ export interface Geometry {
 
 /**
  * Read off mockups/arcing-layouts.html section A, which is the geometry
- * authority. MAX_CHARS 58 is what reproduces that mockup's exact line breaks
- * at 17 px in a 528 px column.
+ * authority. Every value here is a measurement off that SVG except MAX_CHARS.
+ *
+ * MAX_CHARS 58 is a CHARACTER PROXY for pixel width, not a measurement. It is
+ * the budget that reproduces mockup A's exact line breaks, and it was fitted
+ * against the face that mockup renders proposition text in, which is the
+ * system SANS stack at 17 px in a 528 px column (its CSS sets svg text to
+ * -apple-system and never overrides it for .p). The spec's binding type rule
+ * is sans chrome and SERIF passage text, so the renderer will NOT use that
+ * face. A 58-character serif line is not 528 px wide, and any line that
+ * overflows the column runs into the baseline stroke at BASELINE_X. Re-check
+ * this budget against a real serif render and re-derive it if it overflows.
+ * Changing it changes every row height and therefore every arc, so it is a
+ * layout decision and not a renderer tweak.
  */
 export const LAYOUT = {
   WIDTH: 1024,
@@ -82,7 +93,17 @@ export const LAYOUT = {
   BOTTOM_PAD: 20,
 } as const;
 
-/** Greedy wrap. A word longer than the budget gets its own line uncut. */
+/**
+ * Greedy wrap on a character budget. A word longer than the budget gets its
+ * own line uncut.
+ *
+ * Characters are a PROXY for pixel width, fitted to one passage in one font
+ * family (see LAYOUT.MAX_CHARS for which one, and why it is not the face the
+ * renderer will use). A line of wide glyphs therefore overflows the column
+ * and a line of narrow ones underfills it. src/core is DOM-free by
+ * constraint and cannot measure text, which is why this counts rather than
+ * measures.
+ */
 export function wrapLines(text: string, maxChars: number): string[] {
   const words = text.split(/\s+/).filter(Boolean);
   if (words.length === 0) return [""];

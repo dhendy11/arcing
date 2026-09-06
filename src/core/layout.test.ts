@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 import { piperRomansDoc } from "@/fixtures/piperRomans";
-import { layout, wrapLines } from "./layout";
+import { LAYOUT, layout, wrapLines } from "./layout";
 import { NEG_POS_SYMBOL } from "./relationships";
 import { validateDoc } from "./validate";
 
@@ -27,6 +27,15 @@ test("wrapping is greedy at the character budget and never splits a word", () =>
   ]);
   expect(wrapLines("supercalifragilistic", 5)).toEqual(["supercalifragilistic"]);
   expect(wrapLines("", 58)).toEqual([""]);
+});
+
+test("the constants only the renderer reads are the mockup's", () => {
+  // layout() never reads these three, so nothing else pins them. Off mockup A:
+  // the number gutter is x="68" text-anchor="end", the first text baseline is
+  // y=46 on a row topped at y=16, and every tick runs M598 H612.
+  expect(LAYOUT.NUMBER_X).toBe(68);
+  expect(LAYOUT.FIRST_BASELINE).toBe(30);
+  expect(LAYOUT.TICK).toBe(14);
 });
 
 test("proposition rows are the mockup's boxes", () => {
