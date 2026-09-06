@@ -1,5 +1,6 @@
 import { expect, test } from "vitest";
 import { newArcDoc } from "./doc";
+import type { RelCode } from "./relationships";
 import type { ArcDoc } from "./types";
 import { validateDoc } from "./validate";
 
@@ -136,4 +137,11 @@ test("a typed status that disagrees with the derived one is a violation", () => 
   const doc = twoProps();
   doc.status = "complete";
   expect(codes(doc)).toContain("status_derived");
+});
+
+test("an unrecognized relationship code is a violation, not a throw", () => {
+  const doc = twoProps();
+  doc.arcs = [{ id: "a1", kind: "arc", rel: "ZZ" as unknown as RelCode, circled: null, members: [{ kind: "prop", ref: "p1" }, { kind: "prop", ref: "p2" }] }];
+  expect(() => validateDoc(doc)).not.toThrow();
+  expect(codes(doc)).toContain("unknown_relationship");
 });

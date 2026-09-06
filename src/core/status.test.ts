@@ -1,5 +1,6 @@
 import { expect, test } from "vitest";
 import { newArcDoc } from "./doc";
+import type { RelCode } from "./relationships";
 import { completionMissing, deriveStatus } from "./status";
 import type { ArcDoc } from "./types";
 
@@ -59,4 +60,12 @@ test("the missing list names every unmet condition", () => {
 
 test("an unrooted passage is itself a missing condition", () => {
   expect(completionMissing(docWith({}))).toContain("One arc spanning the whole passage");
+});
+
+test("an unrecognized relationship code is a missing condition, not a throw", () => {
+  const doc = docWith({
+    arcs: [{ id: "a1", kind: "arc", rel: "ZZ" as unknown as RelCode, circled: null, members: [{ kind: "prop", ref: "p1" }, { kind: "prop", ref: "p2" }] }],
+  });
+  expect(() => completionMissing(doc)).not.toThrow();
+  expect(completionMissing(doc)).toContain("A recognized relationship on the arc (a1)");
 });
