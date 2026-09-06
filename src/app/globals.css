@@ -289,3 +289,122 @@ input, textarea, select { min-height: 44px; }
   border-radius: 6px;
   padding: 0 20px;
 }
+
+/* Arc frame: wraps Split, Relate and Summarize. Wider than .page because the
+   working screens need room for the diagram, not just a column of text. */
+
+.arc-frame {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 0 24px 32px;
+}
+
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--ink) 12%, var(--paper));
+}
+
+.bar [role="tablist"] {
+  display: flex;
+  gap: 8px;
+  margin-right: auto;
+}
+
+.bar [role="tab"] {
+  background: none;
+  border: 1px solid color-mix(in srgb, var(--ink) 20%, var(--paper));
+  border-radius: 6px;
+  padding: 0 16px;
+}
+
+.bar [role="tab"][aria-selected="true"] {
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.bar [role="tab"]:disabled {
+  opacity: 0.4;
+}
+
+/* A save-state chip is not a control: every state gets the same neutral
+   treatment, distinguished only by its label, never by colour. */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 12px;
+  border: 1px solid color-mix(in srgb, var(--ink) 20%, var(--paper));
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--ink) 75%, var(--paper));
+}
+
+/* Conflict and mirror banners. Reload/Overwrite and Restore/Discard are a
+   pair of equally weighted choices, not a safe option next to a destructive
+   one, so neither button takes the destructive colour: see the task-16
+   report for the reasoning. */
+.banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 12px 16px;
+  border: 1px solid color-mix(in srgb, var(--ink) 20%, var(--paper));
+  border-radius: 8px;
+}
+
+.banner span {
+  flex: 1;
+  font-weight: 600;
+}
+
+.banner button {
+  background: none;
+  border: 1px solid color-mix(in srgb, var(--ink) 25%, var(--paper));
+  border-radius: 6px;
+  padding: 0 20px;
+}
+
+.screen {
+  padding-top: 24px;
+}
+
+.esv-notice {
+  margin-top: 32px;
+  font-size: 14px;
+  color: color-mix(in srgb, var(--ink) 60%, var(--paper));
+}
+
+.esv-notice a {
+  color: inherit;
+}
+
+/* The inline re-login modal over the working screen. */
+.modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 12;
+  width: min(360px, calc(100vw - 48px));
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  background: var(--paper);
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 20px 60px color-mix(in srgb, var(--ink) 35%, transparent);
+}
+
+.modal::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: color-mix(in srgb, var(--ink) 40%, transparent);
+}
