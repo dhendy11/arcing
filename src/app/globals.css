@@ -829,3 +829,116 @@ input, textarea, select { min-height: 44px; }
   font-size: 14px;
   line-height: 1.4;
 }
+
+/* Summarize screen. Piper's argument is written bottom to top: levels[0] is
+   the base of the stack, and each level up carries the connector into what
+   sits above it. Flex-wrap column stretch is what stacks each label above
+   its own input without any extra wrapper markup: a label's small width
+   places it on its own line, and an input's 100% basis fills the next line
+   by itself, which pushes the following label onto a line of its own too. */
+
+.summarize-screen {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  max-width: 640px;
+}
+
+.summarize-screen label {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.summarize-screen input {
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  padding: 8px 12px;
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.summarize-screen input:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  border-color: var(--accent);
+}
+
+.levels h2 {
+  margin: 0 0 16px;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.level {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 6px 12px;
+  padding-bottom: 16px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.level label {
+  font-size: 13px;
+}
+
+.level input {
+  flex-basis: 100%;
+}
+
+.level button {
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  background: none;
+  color: var(--ink);
+  padding: 0 16px;
+  cursor: pointer;
+}
+
+/* Removing a level discards written text, so it is the destructive control
+   on this screen; nothing else here earns that colour. */
+.level button[aria-label^="Remove"] {
+  border-color: var(--destructive);
+  color: var(--destructive);
+}
+
+.levels > button {
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  background: none;
+  color: var(--ink);
+  padding: 0 20px;
+  cursor: pointer;
+}
+
+.summarize-screen button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* What Mark complete is still waiting on. No colour, same as the login and
+   sheet validation messages: this is a checklist, not a warning, and
+   weight carries it. */
+.summarize-screen .missing {
+  margin: 0;
+  padding-left: 20px;
+  font-weight: 600;
+}
+
+.summarize-screen .missing li {
+  margin-bottom: 4px;
+}
+
+/* Mark complete is the only direct-child button in this screen (Up, Remove
+   and Add level all sit inside .levels), so this selector reaches it alone
+   without adding a class the brief's markup does not have. */
+.summarize-screen > button {
+  align-self: flex-start;
+  background: var(--accent);
+  color: var(--paper);
+  border: none;
+  border-radius: 6px;
+  padding: 0 24px;
+  font-weight: 600;
+}
