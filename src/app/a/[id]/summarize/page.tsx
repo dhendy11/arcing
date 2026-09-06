@@ -1,6 +1,6 @@
-import { ArcWorkspace } from "@/components/ArcWorkspace";
-
-export default async function SummarizePage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  return <ArcWorkspace id={id} tab="summarize" />;
+// Summarize is built in Task 20. Until then this tab is reachable once the
+// arc is rooted (the frame's tab bar and routing already work) but shows an
+// empty screen, same as before the workspace moved into the shared layout.
+export default function SummarizePage() {
+  return null;
 }

@@ -19,7 +19,7 @@ function fresh(): ArcDoc {
 test("Piper's split rules sit beside the text as static reference", () => {
   render(<SplitView doc={fresh()} onChange={vi.fn()} />);
   expect(screen.getByText(/Relative clauses usually stay inside their proposition/)).toBeInTheDocument();
-  expect(screen.getByText(/participles and infinitives become their own proposition when they assert/)).toBeInTheDocument();
+  expect(screen.getByText(/participles and infinitives become their own proposition when they assert/i)).toBeInTheDocument();
 });
 
 test("verse numbers render as badges on the word they start", () => {

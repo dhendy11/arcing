@@ -536,7 +536,11 @@ input, textarea, select { min-height: 44px; }
   flex: 1 1 300px;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: 4px 4px;
+  /* No gap: the space between two words is each word's own padding (below),
+     so every pixel on the line belongs to exactly one tap target. A flex
+     gap here would sit between the two buttons, belonging to neither, and
+     a tap landing on it would silently do nothing. */
+  gap: 0;
 }
 
 /* A word is the tap target that starts a new proposition. A literal 44 px
@@ -552,7 +556,7 @@ input, textarea, select { min-height: 44px; }
   min-width: auto;
   min-height: auto;
   margin: 0;
-  padding: 10px 3px;
+  padding: 10px 4px;
   border: none;
   background: none;
   color: var(--ink);
@@ -583,25 +587,18 @@ input, textarea, select { min-height: 44px; }
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 14px;
-  height: 14px;
+  min-width: 16px;
+  height: 16px;
   margin-right: 3px;
-  padding: 0 3px;
+  padding: 0 4px;
   border: 1px solid color-mix(in srgb, var(--ink) 20%, var(--paper));
   border-radius: 999px;
   font-family: var(--sans);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   line-height: 1;
   vertical-align: top;
   top: -2px;
-}
-
-/* An autosave failure the user needs to see. Weight carries it, same as
-   every other alert on this page; no colour is added for it. */
-.workspace-error {
-  margin: 0 0 16px;
-  font-weight: 600;
 }
 
 /* The arc diagram. Sans chrome, serif passage text, one ink weight for every

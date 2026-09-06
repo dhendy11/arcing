@@ -22,6 +22,20 @@ type Pending = { kind: "split"; at: number; arcs: string[] } | { kind: "rejoin";
 
 export function SplitView({ doc, onChange }: { doc: ArcDoc; onChange: (doc: ArcDoc) => void }) {
   const [pending, setPending] = useState<Pending | null>(null);
+  // Tracks which doc `pending` was computed against. ArcFrame installs a
+  // document-level Undo/Redo shortcut that this component does not
+  // suppress, so the document can change out from under an open confirm
+  // modal; without this, "Split/Rejoin anyway" would apply a stale
+  // at/propId to a document the listed arcs may no longer describe. This
+  // is React's documented pattern for resetting state when a prop changes
+  // (adjusting state during render), not a useEffect: an effect that calls
+  // setState unconditionally in its body is a React anti-pattern the
+  // project's own lint rule (react-hooks/set-state-in-effect) rejects.
+  const [pendingForDoc, setPendingForDoc] = useState(doc);
+  if (doc !== pendingForDoc) {
+    setPendingForDoc(doc);
+    setPending(null);
+  }
   const tokens = tokensOf(doc.passage.text);
   const verseAt = new Map(doc.passage.verses.map((v) => [v.start, v.n]));
 
@@ -50,7 +64,7 @@ export function SplitView({ doc, onChange }: { doc: ArcDoc; onChange: (doc: ArcD
       <aside className="rules">
         <h2>Piper on splitting</h2>
         <p>Relative clauses usually stay inside their proposition (p. 27).</p>
-        <p>Also, participles and infinitives become their own proposition when they assert something (p. 28).</p>
+        <p>Participles and infinitives become their own proposition when they assert something (p. 28).</p>
       </aside>
 
       <ol className="propositions passage">

@@ -61,6 +61,29 @@ test("history is capped at 200 steps", () => {
   expect(historyDepth()).toBe(UNDO_LIMIT);
 });
 
+test("pausing the temporal store around a save write does not add an undo step", () => {
+  useArcStore.getState().loadArc(fresh());
+  useArcStore.getState().editDoc(splitAt(fresh(), 4));
+  expect(historyDepth()).toBe(1);
+
+  // The pattern ArcWorkspace's autosave onSaved callback uses: the server's
+  // response is a fresh object (a new rev), which zundo's reference-equality
+  // guard would otherwise record as a second, spurious undo step for the
+  // same logical edit, making the first Undo after a save a no-op.
+  const saved: ArcDoc = { ...(useArcStore.getState().doc as ArcDoc), rev: 2 };
+  const temporal = useArcStore.temporal.getState();
+  temporal.pause();
+  useArcStore.setState({ doc: saved });
+  temporal.resume();
+
+  expect(historyDepth()).toBe(1);
+  expect(useArcStore.getState().doc?.rev).toBe(2);
+
+  undo();
+  expect(useArcStore.getState().doc?.propositions).toHaveLength(1);
+  expect(historyDepth()).toBe(0);
+});
+
 test("leaving the arc clears the document and the history", () => {
   useArcStore.getState().loadArc(fresh());
   useArcStore.getState().editDoc(splitAt(fresh(), 4));
