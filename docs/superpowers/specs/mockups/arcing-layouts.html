@@ -1,0 +1,354 @@
+<title>Arcing Layouts</title>
+<style>
+:root{
+  --bg:#f4f3ef; --surface:#fbfaf8; --paper:#fdfcfa; --ink:#1e1c19; --text:#3a3733; --muted:#6f6a62;
+  --line:#d8d4cc; --line2:#bfbab1; --sel:#1e1c19; --sel-text:#fbfaf8; --tag:#ece9e2;
+  --ba-gold:#a5983d; --ba-blue:#5b7fa4; --ba-red:#b8463f; --ba-green:#7a9a4a; --ba-cell:#e9eef2;
+  --ba-border:#8b8f93; --ba-disc:#e4e4e4; --ba-ink:#2b2b2b; --ba-arc:#161616;
+  color-scheme:light dark;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#191816; --surface:#22201d; --paper:#26241f; --ink:#ede9e1; --text:#d6d1c7; --muted:#9e988d;
+    --line:#3b3934; --line2:#524f48; --sel:#ede9e1; --sel-text:#191816; --tag:#33312c;
+    --ba-gold:#cbbd5e; --ba-blue:#8fb0d3; --ba-red:#e07f78; --ba-green:#9fbf6c; --ba-cell:#2b3239;
+    --ba-border:#6d7378; --ba-disc:#3e4246; --ba-ink:#e6e9ec; --ba-arc:#e6e9ec;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#191816; --surface:#22201d; --paper:#26241f; --ink:#ede9e1; --text:#d6d1c7; --muted:#9e988d;
+  --line:#3b3934; --line2:#524f48; --sel:#ede9e1; --sel-text:#191816; --tag:#33312c;
+  --ba-gold:#cbbd5e; --ba-blue:#8fb0d3; --ba-red:#e07f78; --ba-green:#9fbf6c; --ba-cell:#2b3239;
+  --ba-border:#6d7378; --ba-disc:#3e4246; --ba-ink:#e6e9ec; --ba-arc:#e6e9ec;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);
+  font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+  -webkit-text-size-adjust:100%}
+.wrap{max-width:1024px;margin:0 auto;padding:28px 0 64px}
+.intro{padding:0 16px 8px}
+h1{font-size:22px;line-height:1.2;letter-spacing:-0.01em;color:var(--ink);margin:0 0 6px}
+.intro p{margin:0 0 4px;max-width:70ch}
+h2{font-size:17px;color:var(--ink);margin:36px 16px 2px;letter-spacing:-0.01em}
+.lede{margin:0 16px 10px;color:var(--muted);max-width:90ch}
+.scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.frame{width:1024px;background:var(--surface);border:1px solid var(--line);color:var(--ink)}
+.bar{display:flex;align-items:center;justify-content:space-between;height:56px;padding:0 16px;border-bottom:1px solid var(--line)}
+.passage{display:flex;align-items:center;gap:10px;font-weight:600;font-size:16px}
+.chip{font-weight:400;font-size:12.5px;color:var(--muted);background:var(--tag);padding:3px 8px;border-radius:999px}
+.steps{display:flex;gap:4px}
+.steps span{display:inline-flex;align-items:center;height:44px;padding:0 14px;color:var(--muted);border-bottom:2px solid transparent}
+.steps span.on{color:var(--ink);border-bottom-color:var(--ink)}
+.ghost{height:44px;padding:0 20px;border:1px solid var(--line2);background:transparent;color:var(--ink);border-radius:6px;font:inherit;font-size:14px}
+.arc{display:block;width:1024px;height:auto}
+.stage{padding:8px 0 4px}
+.stage.paper{background:var(--paper)}
+svg text{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif}
+.p{font-size:17px;fill:var(--ink)}
+.n{font-size:17px;font-weight:700;fill:var(--ink)}
+.lab{font-size:17px;font-weight:700;fill:var(--ink)}
+.stroke{fill:none;stroke:var(--ink);stroke-width:3;stroke-linecap:round}
+.thin{fill:none;stroke:var(--ba-arc);stroke-width:1.6}
+.ba-n{font-size:17px;fill:var(--ba-gold)}
+.ba-h{font-size:14px;fill:var(--ba-gold)}
+.ba-p{font-size:17px;fill:var(--ba-ink)}
+.ba-red{font-size:17px;fill:var(--ba-red)}
+.ba-blue{font-size:20px;fill:var(--ba-blue)}
+.palette{display:grid;grid-template-columns:0.85fr 1.05fr 1.35fr 0.85fr;gap:0 12px;padding:10px 12px 14px;border-top:1px solid var(--line)}
+.group .hd{min-height:58px;margin-bottom:4px}
+.group h4{margin:8px 6px 2px;font-size:11.5px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted)}
+.group .where{margin:0 6px 6px;font-size:12px;color:var(--muted)}
+.rel{display:grid;grid-template-columns:62px 1fr;grid-template-rows:auto auto;align-items:center;column-gap:8px;
+  width:100%;min-height:44px;padding:6px 6px;border:0;border-radius:6px;background:transparent;color:var(--ink);
+  text-align:left;font:inherit;cursor:pointer}
+.rel:hover{background:var(--tag)}
+.rel:focus-visible{outline:2px solid var(--ink);outline-offset:1px}
+.rel .sym{grid-row:1/3;align-self:start;font-weight:700;font-size:15px;line-height:22px;font-variant-numeric:tabular-nums}
+.rel .name{font-size:14.5px;line-height:22px}
+.rel .def{font-size:12.5px;line-height:1.35;color:var(--muted)}
+.rel .ring{display:inline-block;margin-left:6px;font-size:11px;color:var(--muted);border:1px solid var(--line2);border-radius:999px;padding:0 6px;line-height:16px;vertical-align:1px}
+.rel.on{background:var(--sel);color:var(--sel-text)}
+.rel.on .def,.rel.on .ring{color:var(--sel-text);opacity:.8;border-color:var(--sel-text)}
+.warn{margin:2px 6px 6px;font-size:12px;color:var(--muted);border-left:2px solid var(--line2);padding-left:8px}
+.notes{padding:0 16px}
+.notes h3{font-size:14px;color:var(--ink);margin:32px 0 6px}
+.notes ol{margin:0;padding-left:20px}
+.notes li{margin:0 0 8px;max-width:95ch}
+.notes a{color:var(--ink);word-break:break-all}
+.cite{margin:6px 16px 0;font-size:12.5px;color:var(--muted)}
+.cite a{color:var(--muted)}
+</style>
+
+<div class="wrap">
+  <div class="intro">
+    <h1>Arcing Layouts</h1>
+    <p>Three ways to draw the same arc on the Relate screen, each at 1024 px. The sample is John Piper's own arc of Romans 12:1-2 from <em>Biblical Exegesis</em>, pp. 21-23: his four propositions, his labels, his circles. Nothing here is a new split or a new label.</p>
+    <p>The chrome around the arc is identical in all three so the only thing that differs is how the arc is drawn.</p>
+  </div>
+
+  <!-- ============================ A ============================ -->
+  <h2>A. Paper style, turned vertical</h2>
+  <p class="lede">Piper's conventions (thick ink arcs, symbols in bold inside the arcs, the negative as a stroke, the primary member circled) with the propositions stacked so the text can be read at full width. Arcs sit to the right, smallest nearest the text.</p>
+  <div class="scroll"><div class="frame">
+    <header class="bar">
+      <div class="passage">Romans 12:1-2 <span class="chip">Piper's translation</span></div>
+      <nav class="steps"><span>Split</span><span class="on">Relate</span><span>Summarize</span></nav>
+      <button class="ghost" type="button">Undo</button>
+    </header>
+    <div class="stage paper">
+      <svg class="arc" viewBox="0 0 1024 300" role="img" aria-labelledby="ta">
+        <title id="ta">Romans 12:1-2 arced in paper style, vertical</title>
+        <!-- proposition numbers -->
+        <text class="n" x="68" y="46" text-anchor="end">12:1</text>
+        <text class="n" x="68" y="142" text-anchor="end">12:2a</text>
+        <text class="n" x="68" y="190" text-anchor="end">12:2b</text>
+        <text class="n" x="68" y="238" text-anchor="end">12:2c</text>
+        <!-- proposition text -->
+        <text class="p" x="84" y="46">I beseech you by the mercies of God, brothers, to present</text>
+        <text class="p" x="84" y="70">your bodies to God as a living, holy, acceptable sacrifice</text>
+        <text class="p" x="84" y="94">which is your spiritual service of worship.</text>
+        <text class="p" x="84" y="142">And do not be conformed to this age</text>
+        <text class="p" x="84" y="190">but be transformed by the renewing of your mind,</text>
+        <text class="p" x="84" y="238">in order that you might approve what the will of God is,</text>
+        <text class="p" x="84" y="262">namely, the good, the acceptable, and the perfect.</text>
+        <!-- baseline and ticks -->
+        <path class="stroke" d="M612 16 V280"/>
+        <path class="stroke" d="M598 16 H612 M598 112 H612 M598 160 H612 M598 208 H612 M598 280 H612"/>
+        <!-- leaf arcs -->
+        <path class="stroke" d="M612 16 A48 48 0 0 1 612 112"/>
+        <path class="stroke" d="M612 112 A48 24 0 0 1 612 160"/>
+        <path class="stroke" d="M612 160 A48 24 0 0 1 612 208"/>
+        <path class="stroke" d="M612 208 A48 36 0 0 1 612 280"/>
+        <!-- enclosing arcs -->
+        <path class="stroke" d="M612 112 A104 48 0 0 1 612 208"/>
+        <path class="stroke" d="M612 112 A160 84 0 0 1 612 280"/>
+        <path class="stroke" d="M612 16 A216 132 0 0 1 612 280"/>
+        <!-- labels, as Piper prints them -->
+        <ellipse class="stroke" cx="638" cy="64" rx="21" ry="14" style="stroke-width:2.5"/>
+        <text class="lab" x="638" y="70" text-anchor="middle">Pu</text>
+        <path class="stroke" d="M626 136 H650"/>
+        <text class="lab" x="638" y="191" text-anchor="middle" style="font-size:21px">+</text>
+        <ellipse class="stroke" cx="638" cy="244" rx="21" ry="14" style="stroke-width:2.5"/>
+        <text class="lab" x="638" y="250" text-anchor="middle">Pu</text>
+        <text class="lab" x="690" y="166" text-anchor="middle">Ac</text>
+        <text class="lab" x="746" y="202" text-anchor="middle">Ac</text>
+      </svg>
+    </div>
+    <!-- palette -->
+    <div class="palette">
+      <section class="group">
+        <div class="hd"><h4>Coordinate</h4><p class="where">symbol sits between the arcs</p></div>
+        <button class="rel" type="button"><span class="sym">S</span><span class="name">Series</span><span class="def">Each proposition makes its own independent contribution to a whole.</span></button>
+        <button class="rel" type="button"><span class="sym">P</span><span class="name">Progression</span><span class="def">Like series, but each proposition is a further step toward a climax.</span></button>
+        <button class="rel" type="button"><span class="sym">A</span><span class="name">Alternative</span><span class="def">Each proposition expresses a different possibility arising from a situation.</span></button>
+      </section>
+      <section class="group">
+        <div class="hd"><h4>Support by restatement</h4><p class="where">symbol sits inside the arcs</p></div>
+        <button class="rel" type="button"><span class="sym">Ac/Mn</span><span class="name">Action-Manner</span><span class="def">An action and a statement indicating the way or manner that action is carried out.</span></button>
+        <button class="rel" type="button"><span class="sym">Cf</span><span class="name">Comparison</span><span class="def">An action and a statement that clarifies that action by showing what it is like.</span></button>
+        <button class="rel" type="button"><span class="sym">&minus;/+</span><span class="name">Negative-Positive</span><span class="def">Two statements, one of which is denied so that the other is enforced.</span></button>
+        <button class="rel" type="button"><span class="sym">Id/Exp</span><span class="name">Idea-Explanation</span><span class="def">The relationship between an original statement and one clarifying its meaning.</span></button>
+        <button class="rel" type="button"><span class="sym">Q/A</span><span class="name">Question-Answer</span><span class="def">The statement of a question and the answer to that question.</span></button>
+      </section>
+      <section class="group">
+        <div class="hd"><h4>Support by distinct statement</h4><p class="where">symbol sits inside the arcs</p></div>
+        <button class="rel" type="button"><span class="sym">G</span><span class="name">Ground</span><span class="def">A statement and the argument or reason for that statement (supporting proposition follows).</span></button>
+        <button class="rel" type="button"><span class="sym">&there4;</span><span class="name">Inference</span><span class="def">A statement and the argument or reason for that statement (supporting proposition precedes).</span></button>
+        <p class="warn">Piper, p. 34: do not mix these two up. In Ground the conclusion comes first; in Inference it comes second.</p>
+        <button class="rel" type="button"><span class="sym">Ac/Res</span><span class="name">Action-Result <span class="ring">circle one</span></span><span class="def">An action and a consequence or result which accompanies that action.</span></button>
+        <button class="rel on" type="button" aria-pressed="true"><span class="sym">Ac/Pur</span><span class="name">Action-Purpose <span class="ring">circle one</span></span><span class="def">An action and its intended result.</span></button>
+        <button class="rel" type="button"><span class="sym">If/Th</span><span class="name">Conditional</span><span class="def">Like Action-Result except that the existence of the action is only potential and the result is contingent upon that action.</span></button>
+        <button class="rel" type="button"><span class="sym">T</span><span class="name">Temporal</span><span class="def">A statement and the occasion when it is true or can occur.</span></button>
+        <button class="rel" type="button"><span class="sym">L</span><span class="name">Locative</span><span class="def">A statement and the place where it is true or can occur.</span></button>
+        <button class="rel" type="button"><span class="sym">BL</span><span class="name">Bilateral</span><span class="def">A proposition that supports two other propositions, one preceding and one following.</span></button>
+      </section>
+      <section class="group">
+        <div class="hd"><h4>Support by contrary statement</h4><p class="where">symbol sits inside the arcs</p></div>
+        <button class="rel" type="button"><span class="sym">Csv</span><span class="name">Concessive</span><span class="def">A main clause that stands despite a contrary statement.</span></button>
+        <button class="rel" type="button"><span class="sym">Sit/R</span><span class="name">Situation-Response <span class="ring">circle one</span></span><span class="def">A situation and its surprising or counter-intuitive response.</span></button>
+      </section>
+    </div>
+  </div></div>
+
+  <!-- ============================ B ============================ -->
+  <h2>B. Biblearc style</h2>
+  <p class="lede">Verified from Biblearc's own module screenshots (2023, cited below): propositions in boxed cells with the verse numbers in gold on the left, the translation named above the column, thin arcs to the right growing one step per level, labels inside the arcs coloured by group, and the main member of a relationship on a grey disc.</p>
+  <div class="scroll"><div class="frame">
+    <header class="bar">
+      <div class="passage">Romans 12:1-2 <span class="chip">Piper's translation</span></div>
+      <nav class="steps"><span>Split</span><span class="on">Relate</span><span>Summarize</span></nav>
+      <button class="ghost" type="button">Undo</button>
+    </header>
+    <div class="stage">
+      <svg class="arc" viewBox="0 0 1024 330" role="img" aria-labelledby="tb">
+        <title id="tb">Romans 12:1-2 arced in Biblearc style</title>
+        <text class="ba-h" x="360" y="30" text-anchor="middle">Piper's translation</text>
+        <!-- cells -->
+        <rect x="104" y="44" width="512" height="264" fill="var(--ba-cell)" stroke="var(--ba-border)" stroke-width="1.2"/>
+        <path d="M104 140 H616 M104 188 H616 M104 236 H616" fill="none" stroke="var(--ba-border)" stroke-width="1.2"/>
+        <!-- verse numbers -->
+        <text class="ba-n" x="92" y="98" text-anchor="end">1</text>
+        <text class="ba-n" x="92" y="170" text-anchor="end">2a</text>
+        <text class="ba-n" x="92" y="218" text-anchor="end">2b</text>
+        <text class="ba-n" x="92" y="278" text-anchor="end">2c</text>
+        <!-- text -->
+        <text class="ba-p" x="116" y="74">I beseech you by the mercies of God, brothers, to present</text>
+        <text class="ba-p" x="116" y="98">your bodies to God as a living, holy, acceptable sacrifice</text>
+        <text class="ba-p" x="116" y="122">which is your spiritual service of worship.</text>
+        <text class="ba-p" x="116" y="170">And do not be conformed to this age</text>
+        <text class="ba-p" x="116" y="218">but be transformed by the renewing of your mind,</text>
+        <text class="ba-p" x="116" y="266">in order that you might approve what the will of God is,</text>
+        <text class="ba-p" x="116" y="290">namely, the good, the acceptable, and the perfect.</text>
+        <!-- leaf arcs -->
+        <path class="thin" d="M616 44 A64 48 0 0 1 616 140"/>
+        <path class="thin" d="M616 140 A64 24 0 0 1 616 188"/>
+        <path class="thin" d="M616 188 A64 24 0 0 1 616 236"/>
+        <path class="thin" d="M616 236 A64 36 0 0 1 616 308"/>
+        <!-- enclosing arcs -->
+        <path class="thin" d="M616 140 A128 48 0 0 1 616 236"/>
+        <path class="thin" d="M616 140 A200 84 0 0 1 616 308"/>
+        <path class="thin" d="M616 44 A280 132 0 0 1 616 308"/>
+        <!-- labels -->
+        <circle cx="650" cy="92" r="19" fill="var(--ba-disc)"/>
+        <text class="ba-red" x="650" y="98" text-anchor="middle">Pur</text>
+        <text class="ba-blue" x="650" y="171" text-anchor="middle">&minus;</text>
+        <text class="ba-blue" x="650" y="219" text-anchor="middle">+</text>
+        <circle cx="650" cy="272" r="19" fill="var(--ba-disc)"/>
+        <text class="ba-red" x="650" y="278" text-anchor="middle">Pur</text>
+        <text class="ba-red" x="712" y="194" text-anchor="middle">Ac</text>
+        <text class="ba-red" x="784" y="230" text-anchor="middle">Ac</text>
+      </svg>
+    </div>
+    <p class="cite">Layout source: Biblearc, "Arcing's Optional Relationships" (Brent Karding, 2024-03-21), module screenshots of Ezekiel 30:22 and Matthew 1:21-23: <a href="https://s3.amazonaws.com/cdn.gospelpaths.com/tenants/5/1697223527437-2.Ezek3022.png">Ezek 30:22 screenshot</a>, <a href="https://s3.amazonaws.com/cdn.gospelpaths.com/tenants/5/1697223562728-3.Matt12123.png">Matt 1:21-23 screenshot</a>, from <a href="https://equip.biblearc.com/blog-post/arcings-optional-relationships">equip.biblearc.com/blog-post/arcings-optional-relationships</a>.</p>
+    <div class="palette">
+      <section class="group">
+        <div class="hd"><h4>Coordinate</h4><p class="where">symbol sits between the arcs</p></div>
+        <button class="rel" type="button"><span class="sym">S</span><span class="name">Series</span><span class="def">Each proposition makes its own independent contribution to a whole.</span></button>
+        <button class="rel" type="button"><span class="sym">P</span><span class="name">Progression</span><span class="def">Like series, but each proposition is a further step toward a climax.</span></button>
+        <button class="rel" type="button"><span class="sym">A</span><span class="name">Alternative</span><span class="def">Each proposition expresses a different possibility arising from a situation.</span></button>
+      </section>
+      <section class="group">
+        <div class="hd"><h4>Support by restatement</h4><p class="where">symbol sits inside the arcs</p></div>
+        <button class="rel" type="button"><span class="sym">Ac/Mn</span><span class="name">Action-Manner</span><span class="def">An action and a statement indicating the way or manner that action is carried out.</span></button>
+        <button class="rel" type="button"><span class="sym">Cf</span><span class="name">Comparison</span><span class="def">An action and a statement that clarifies that action by showing what it is like.</span></button>
+        <button class="rel" type="button"><span class="sym">&minus;/+</span><span class="name">Negative-Positive</span><span class="def">Two statements, one of which is denied so that the other is enforced.</span></button>
+        <button class="rel" type="button"><span class="sym">Id/Exp</span><span class="name">Idea-Explanation</span><span class="def">The relationship between an original statement and one clarifying its meaning.</span></button>
+        <button class="rel" type="button"><span class="sym">Q/A</span><span class="name">Question-Answer</span><span class="def">The statement of a question and the answer to that question.</span></button>
+      </section>
+      <section class="group">
+        <div class="hd"><h4>Support by distinct statement</h4><p class="where">symbol sits inside the arcs</p></div>
+        <button class="rel" type="button"><span class="sym">G</span><span class="name">Ground</span><span class="def">A statement and the argument or reason for that statement (supporting proposition follows).</span></button>
+        <button class="rel" type="button"><span class="sym">&there4;</span><span class="name">Inference</span><span class="def">A statement and the argument or reason for that statement (supporting proposition precedes).</span></button>
+        <p class="warn">Piper, p. 34: do not mix these two up. In Ground the conclusion comes first; in Inference it comes second.</p>
+        <button class="rel" type="button"><span class="sym">Ac/Res</span><span class="name">Action-Result <span class="ring">circle one</span></span><span class="def">An action and a consequence or result which accompanies that action.</span></button>
+        <button class="rel on" type="button" aria-pressed="true"><span class="sym">Ac/Pur</span><span class="name">Action-Purpose <span class="ring">circle one</span></span><span class="def">An action and its intended result.</span></button>
+        <button class="rel" type="button"><span class="sym">If/Th</span><span class="name">Conditional</span><span class="def">Like Action-Result except that the existence of the action is only potential and the result is contingent upon that action.</span></button>
+        <button class="rel" type="button"><span class="sym">T</span><span class="name">Temporal</span><span class="def">A statement and the occasion when it is true or can occur.</span></button>
+        <button class="rel" type="button"><span class="sym">L</span><span class="name">Locative</span><span class="def">A statement and the place where it is true or can occur.</span></button>
+        <button class="rel" type="button"><span class="sym">BL</span><span class="name">Bilateral</span><span class="def">A proposition that supports two other propositions, one preceding and one following.</span></button>
+      </section>
+      <section class="group">
+        <div class="hd"><h4>Support by contrary statement</h4><p class="where">symbol sits inside the arcs</p></div>
+        <button class="rel" type="button"><span class="sym">Csv</span><span class="name">Concessive</span><span class="def">A main clause that stands despite a contrary statement.</span></button>
+        <button class="rel" type="button"><span class="sym">Sit/R</span><span class="name">Situation-Response <span class="ring">circle one</span></span><span class="def">A situation and its surprising or counter-intuitive response.</span></button>
+      </section>
+    </div>
+  </div></div>
+
+  <!-- ============================ C ============================ -->
+  <h2>C. Booklet orientation</h2>
+  <p class="lede">Exactly how Piper draws it on p. 23: the proposition numbers in a row, semicircular arcs stacked above them, and the propositions listed underneath by number. Genuinely different because the arc is read horizontally, the way the paper arcs you photograph on Saturdays are. The cost is that the text and the diagram are apart, so you read by number, and the row width caps how many propositions fit at 1024 px (Piper's Luke 12:35-38 on p. 24 has twelve).</p>
+  <div class="scroll"><div class="frame">
+    <header class="bar">
+      <div class="passage">Romans 12:1-2 <span class="chip">Piper's translation</span></div>
+      <nav class="steps"><span>Split</span><span class="on">Relate</span><span>Summarize</span></nav>
+      <button class="ghost" type="button">Undo</button>
+    </header>
+    <div class="stage paper">
+      <svg class="arc" viewBox="0 0 1024 608" role="img" aria-labelledby="tc">
+        <title id="tc">Romans 12:1-2 arced in Piper's horizontal orientation</title>
+        <!-- arcs -->
+        <path class="stroke" d="M212 340 A75 75 0 0 1 362 340"/>
+        <path class="stroke" d="M362 340 A75 75 0 0 1 512 340"/>
+        <path class="stroke" d="M512 340 A75 75 0 0 1 662 340"/>
+        <path class="stroke" d="M662 340 A75 75 0 0 1 812 340"/>
+        <path class="stroke" d="M362 340 A150 150 0 0 1 662 340"/>
+        <path class="stroke" d="M362 340 A225 225 0 0 1 812 340"/>
+        <path class="stroke" d="M212 340 A300 300 0 0 1 812 340"/>
+        <!-- baseline, ticks, numbers -->
+        <path class="stroke" d="M212 340 H812"/>
+        <path class="stroke" d="M212 340 V376 M362 340 V376 M512 340 V376 M662 340 V376 M812 340 V376"/>
+        <text class="n" x="287" y="368" text-anchor="middle" style="font-size:20px">1</text>
+        <text class="n" x="437" y="368" text-anchor="middle" style="font-size:20px">2a</text>
+        <text class="n" x="587" y="368" text-anchor="middle" style="font-size:20px">b</text>
+        <text class="n" x="737" y="368" text-anchor="middle" style="font-size:20px">c</text>
+        <!-- labels -->
+        <ellipse class="stroke" cx="287" cy="306" rx="24" ry="16" style="stroke-width:2.5"/>
+        <text class="lab" x="287" y="312" text-anchor="middle" style="font-size:18px">Pu</text>
+        <path class="stroke" d="M421 306 H453"/>
+        <text class="lab" x="587" y="314" text-anchor="middle" style="font-size:23px">+</text>
+        <ellipse class="stroke" cx="737" cy="306" rx="24" ry="16" style="stroke-width:2.5"/>
+        <text class="lab" x="737" y="312" text-anchor="middle" style="font-size:18px">Pu</text>
+        <text class="lab" x="512" y="236" text-anchor="middle" style="font-size:18px">Ac</text>
+        <text class="lab" x="700" y="178" text-anchor="middle" style="font-size:18px">Ac</text>
+        <!-- proposition list, p. 21 -->
+        <text class="n" x="196" y="424" text-anchor="end">12:1</text>
+        <text class="p" x="212" y="424">I beseech you by the mercies of God, brothers, to present your bodies to God as a</text>
+        <text class="p" x="212" y="448">living, holy, acceptable sacrifice which is your spiritual service of worship.</text>
+        <text class="n" x="196" y="484" text-anchor="end">12:2a</text>
+        <text class="p" x="212" y="484">And do not be conformed to this age</text>
+        <text class="n" x="196" y="520" text-anchor="end">12:2b</text>
+        <text class="p" x="212" y="520">but be transformed by the renewing of your mind,</text>
+        <text class="n" x="196" y="556" text-anchor="end">12:2c</text>
+        <text class="p" x="212" y="556">in order that you might approve what the will of God is, namely, the good, the</text>
+        <text class="p" x="212" y="580">acceptable, and the perfect.</text>
+      </svg>
+    </div>
+    <div class="palette">
+      <section class="group">
+        <div class="hd"><h4>Coordinate</h4><p class="where">symbol sits between the arcs</p></div>
+        <button class="rel" type="button"><span class="sym">S</span><span class="name">Series</span><span class="def">Each proposition makes its own independent contribution to a whole.</span></button>
+        <button class="rel" type="button"><span class="sym">P</span><span class="name">Progression</span><span class="def">Like series, but each proposition is a further step toward a climax.</span></button>
+        <button class="rel" type="button"><span class="sym">A</span><span class="name">Alternative</span><span class="def">Each proposition expresses a different possibility arising from a situation.</span></button>
+      </section>
+      <section class="group">
+        <div class="hd"><h4>Support by restatement</h4><p class="where">symbol sits inside the arcs</p></div>
+        <button class="rel" type="button"><span class="sym">Ac/Mn</span><span class="name">Action-Manner</span><span class="def">An action and a statement indicating the way or manner that action is carried out.</span></button>
+        <button class="rel" type="button"><span class="sym">Cf</span><span class="name">Comparison</span><span class="def">An action and a statement that clarifies that action by showing what it is like.</span></button>
+        <button class="rel" type="button"><span class="sym">&minus;/+</span><span class="name">Negative-Positive</span><span class="def">Two statements, one of which is denied so that the other is enforced.</span></button>
+        <button class="rel" type="button"><span class="sym">Id/Exp</span><span class="name">Idea-Explanation</span><span class="def">The relationship between an original statement and one clarifying its meaning.</span></button>
+        <button class="rel" type="button"><span class="sym">Q/A</span><span class="name">Question-Answer</span><span class="def">The statement of a question and the answer to that question.</span></button>
+      </section>
+      <section class="group">
+        <div class="hd"><h4>Support by distinct statement</h4><p class="where">symbol sits inside the arcs</p></div>
+        <button class="rel" type="button"><span class="sym">G</span><span class="name">Ground</span><span class="def">A statement and the argument or reason for that statement (supporting proposition follows).</span></button>
+        <button class="rel" type="button"><span class="sym">&there4;</span><span class="name">Inference</span><span class="def">A statement and the argument or reason for that statement (supporting proposition precedes).</span></button>
+        <p class="warn">Piper, p. 34: do not mix these two up. In Ground the conclusion comes first; in Inference it comes second.</p>
+        <button class="rel" type="button"><span class="sym">Ac/Res</span><span class="name">Action-Result <span class="ring">circle one</span></span><span class="def">An action and a consequence or result which accompanies that action.</span></button>
+        <button class="rel on" type="button" aria-pressed="true"><span class="sym">Ac/Pur</span><span class="name">Action-Purpose <span class="ring">circle one</span></span><span class="def">An action and its intended result.</span></button>
+        <button class="rel" type="button"><span class="sym">If/Th</span><span class="name">Conditional</span><span class="def">Like Action-Result except that the existence of the action is only potential and the result is contingent upon that action.</span></button>
+        <button class="rel" type="button"><span class="sym">T</span><span class="name">Temporal</span><span class="def">A statement and the occasion when it is true or can occur.</span></button>
+        <button class="rel" type="button"><span class="sym">L</span><span class="name">Locative</span><span class="def">A statement and the place where it is true or can occur.</span></button>
+        <button class="rel" type="button"><span class="sym">BL</span><span class="name">Bilateral</span><span class="def">A proposition that supports two other propositions, one preceding and one following.</span></button>
+      </section>
+      <section class="group">
+        <div class="hd"><h4>Support by contrary statement</h4><p class="where">symbol sits inside the arcs</p></div>
+        <button class="rel" type="button"><span class="sym">Csv</span><span class="name">Concessive</span><span class="def">A main clause that stands despite a contrary statement.</span></button>
+        <button class="rel" type="button"><span class="sym">Sit/R</span><span class="name">Situation-Response <span class="ring">circle one</span></span><span class="def">A situation and its surprising or counter-intuitive response.</span></button>
+      </section>
+    </div>
+  </div></div>
+
+  <div class="notes">
+    <h3>Sources and what was not confirmed</h3>
+    <ol>
+      <li><strong>The sample arc.</strong> John Piper, <em>Biblical Exegesis: Discovering the Meaning of Scriptural Texts</em>, <a href="https://cdn.desiringgod.org/pdf/booklets/BTBX.pdf">cdn.desiringgod.org/pdf/booklets/BTBX.pdf</a>. Propositions and their numbering (12:1, 12:2a, 12:2b, 12:2c) are p. 21 verbatim; the finished diagram with the row "1 2a b c" is p. 23. The diagram reads, left to right: Pu circled over 1, a long stroke over 2a, + over b, Pu circled over c, Ac in the arc over 2a-b, Ac in the arc over 2a-c, and no symbol on the outer arc. Every label was legible at 300 dpi; nothing was guessed.</li>
+      <li><strong>One wording mismatch in the booklet itself.</strong> The text on p. 22 says "I circle the Pur", but the drawing on both p. 22 and p. 23 prints "Pu" inside the ellipse. A and C reproduce the drawing (Pu). B uses Biblearc's own abbreviation (Pur), which is what its picker shows.</li>
+      <li><strong>The negative symbol.</strong> Piper draws it as a long horizontal stroke. A and C draw a stroke; B and the palette use the minus sign, which is Biblearc's form (its picker lists it as a minus over a plus).</li>
+      <li><strong>Biblearc's layout, verified.</strong> The two module screenshots cited under B (published 2023 in a Biblearc blog post) show: propositions stacked in bordered cells, verse-letter numbers in gold at the left of the text, the translation name above the column, arcs to the right of the text, one arc per proposition nearest the text and each enclosing arc one step further out, labels inside the arcs coloured by group (blue restatement, red distinct statement, green coordinate), and the main member of every subordinate relationship on a light grey disc with a star on the bracket side. The same screenshots show a bracket view on the left of the text; that is Biblearc's Bracketing module and is left out here because bracketing is not in v1. Interaction, from the Advent 2020 course page (<a href="https://equip.biblearc.com/course/advent2020/63782">equip.biblearc.com/course/advent2020/63782</a>): "Click on a word to have it begin a new proposition. Click an X on the left to rejoin two propositions." "Click where you would like the arc to begin and end. Indicate a relationship by clicking an arc's 'handle.'" "Click the double arrow to switch the order of a relationship."</li>
+      <li><strong>Not confirmed about Biblearc.</strong> Exact colours and typeface are sampled from the 2023 screenshots and may have changed. Biblearc marks a main member in every subordinate relationship, including Negative-Positive; Piper circles only in Ac-Pur, Ac-Res and Sit-R (p. 22), so B follows Piper's data and leaves the minus and plus unmarked. The lesson page given in the brief (<a href="https://equip.biblearc.com/course/arcing/130972">course/arcing/130972</a>) carries one image and it is the title page of a 2009 seminary paper, not the module, so it was not used.</li>
+      <li><strong>Symbols and definitions.</strong> Symbol forms follow Piper's chart, pp. 33-34, which also states that coordinate symbols are written between the arcs and subordinate symbols inside them. Group order and the eight distinct-statement rows follow the chart's order. The one-line definitions are quoted from Biblearc's cheat sheet "The 18 Logical Relationships" as recorded in <code>references/personal/bible-arcing-primer.md</code>.</li>
+      <li><strong>Numbering differs on purpose.</strong> A uses Piper's list labels (12:1, 12:2a...), C uses his diagram row (1, 2a, b, c) plus his list, B uses Biblearc's verse-letter style (1, 2a, 2b, 2c).</li>
+    </ol>
+  </div>
+</div>
