@@ -1,4 +1,4 @@
-import { mkdtemp, readdir, readFile } from "node:fs/promises";
+import { mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, expect, test } from "vitest";
@@ -7,13 +7,19 @@ import type { ArcDoc } from "@/core/types";
 import { arcsDir, isSafeArcId, listArcIds, listSummaries, readArc, writeArc } from "./arcStore";
 
 const previous = process.env.DATA_DIR;
+let dataDir: string;
 
 beforeEach(async () => {
-  process.env.DATA_DIR = await mkdtemp(path.join(tmpdir(), "arcing-store-"));
+  dataDir = await mkdtemp(path.join(tmpdir(), "arcing-store-"));
+  process.env.DATA_DIR = dataDir;
 });
 
-afterEach(() => {
-  process.env.DATA_DIR = previous;
+afterEach(async () => {
+  // process.env.X = undefined coerces to the string "undefined" rather than
+  // deleting the key, which would point a later reader at ./undefined/arcs.
+  if (previous === undefined) delete process.env.DATA_DIR;
+  else process.env.DATA_DIR = previous;
+  await rm(dataDir, { recursive: true, force: true });
 });
 
 function doc(id: string, reference: string, createdAt: string): ArcDoc {
@@ -88,8 +94,33 @@ test("an id that could escape the data directory is refused", async () => {
 
 test("a corrupt file is skipped rather than breaking the list", async () => {
   await writeArc(doc("a-1", "Romans 1:1", "2026-09-05T10:00:00Z"));
-  const { writeFile } = await import("node:fs/promises");
   await writeFile(path.join(arcsDir(), "broken.json"), "{ not json", "utf8");
   const summaries = await listSummaries();
   expect(summaries.map((s) => s.id)).toEqual(["a-1"]);
+});
+
+test("readArc rejects rather than returning null for a corrupt file", async () => {
+  await writeArc(doc("a-1", "Romans 1:1", "2026-09-05T10:00:00Z"));
+  await writeFile(path.join(arcsDir(), "broken.json"), "{ not json", "utf8");
+  await expect(readArc("broken")).rejects.toThrow();
+});
+
+test("a valid-JSON file of the wrong shape is skipped rather than breaking the list", async () => {
+  await writeArc(doc("a-1", "Romans 1:1", "2026-09-05T10:00:00Z"));
+  await writeFile(path.join(arcsDir(), "wrong-shape.json"), "{}", "utf8");
+  const summaries = await listSummaries();
+  expect(summaries.map((s) => s.id)).toEqual(["a-1"]);
+  await expect(readArc("wrong-shape")).rejects.toThrow();
+});
+
+test("listArcIds surfaces a real error instead of hiding it as an empty list", async () => {
+  // arcsDir() does not exist yet; put a plain file where the arcs directory
+  // should be, so readdir fails with ENOTDIR rather than the missing-file
+  // ENOENT that means "no arcs written yet".
+  await writeFile(arcsDir(), "not a directory", "utf8");
+  await expect(listArcIds()).rejects.toThrow();
+});
+
+test("an oversized id is refused as unsafe rather than failing at the filesystem", () => {
+  expect(isSafeArcId(`a${"1".repeat(300)}`)).toBe(false);
 });
