@@ -36,9 +36,18 @@ export function LoginForm({ onSignedIn }: { onSignedIn: () => void }) {
         type="password"
         autoComplete="current-password"
         value={password}
-        onChange={(e) => setPassword(e.target.value)}
+        onChange={(e) => {
+          setPassword(e.target.value);
+          setError(null);
+        }}
+        aria-invalid={error !== null}
+        aria-describedby={error === null ? undefined : "password-error"}
       />
-      {error === null ? null : <p role="alert">{error}</p>}
+      {error === null ? null : (
+        <p id="password-error" role="alert">
+          {error}
+        </p>
+      )}
       <button type="submit" disabled={busy}>
         Sign in
       </button>

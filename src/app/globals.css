@@ -22,7 +22,270 @@ body {
 
 button, a, input, textarea, select { font: inherit; }
 
-/* Every interactive target clears the 44 px floor. */
+/* Every interactive target clears the 44 px floor. min-width belongs on a
+   button, not on a text field: a field's width comes from its layout. Only
+   min-height applies here, and it is min-height rather than height so a
+   textarea's own rows can still grow it taller. */
 button, .target { min-height: 44px; min-width: 44px; }
+input, textarea, select { min-height: 44px; }
 
 .passage { font-family: var(--serif); }
+
+/* Reading measure: content never runs flush to the corner. */
+.page {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 32px 24px;
+}
+
+.page h1 {
+  margin: 0 0 24px;
+  font-size: 24px;
+}
+
+/* Login */
+
+.login {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 360px;
+}
+
+.login label {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.login input {
+  border: 1px solid color-mix(in srgb, var(--ink) 25%, var(--paper));
+  border-radius: 6px;
+  padding: 8px 12px;
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.login input:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  border-color: var(--accent);
+}
+
+/* A validation message is not a control: no colour, weight carries it. */
+.login [role="alert"] {
+  margin: 0;
+  font-weight: 600;
+}
+
+.login button[type="submit"] {
+  align-self: flex-start;
+  background: var(--accent);
+  color: var(--paper);
+  border: none;
+  border-radius: 6px;
+  padding: 0 20px;
+  font-weight: 600;
+}
+
+/* Series list */
+
+.series {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.series-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.series-head h1 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.series-head button {
+  background: var(--accent);
+  color: var(--paper);
+  border: none;
+  border-radius: 6px;
+  padding: 0 20px;
+  font-weight: 600;
+}
+
+.series-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.series-rows li {
+  border-bottom: 1px solid color-mix(in srgb, var(--ink) 12%, var(--paper));
+}
+
+.series-rows li:first-child {
+  border-top: 1px solid color-mix(in srgb, var(--ink) 12%, var(--paper));
+}
+
+/* Four distinct fields at a glance: reference is what Drew scans for, date
+   and status are secondary, the main point is a sentence that may be long
+   or empty. Hierarchy comes from size, weight and position, never colour. */
+.series-rows button {
+  display: grid;
+  grid-template-columns: 100px 1fr auto;
+  grid-template-areas:
+    "date reference status"
+    "main-point main-point main-point";
+  column-gap: 16px;
+  row-gap: 4px;
+  width: 100%;
+  padding: 14px 4px;
+  border: none;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.series-rows button:hover,
+.series-rows button:focus-visible {
+  background: color-mix(in srgb, var(--accent) 8%, var(--paper));
+}
+
+.date {
+  grid-area: date;
+  font-size: 14px;
+  color: color-mix(in srgb, var(--ink) 60%, var(--paper));
+}
+
+.reference {
+  grid-area: reference;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.status {
+  grid-area: status;
+  font-size: 14px;
+  color: color-mix(in srgb, var(--ink) 60%, var(--paper));
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.main-point {
+  grid-area: main-point;
+  font-size: 15px;
+  color: color-mix(in srgb, var(--ink) 75%, var(--paper));
+}
+
+.main-point:empty {
+  display: none;
+}
+
+.empty {
+  padding: 32px 4px;
+  color: color-mix(in srgb, var(--ink) 55%, var(--paper));
+}
+
+/* New arc sheet: a panel over the list, not a block appended below it. */
+.sheet {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 11;
+  width: min(480px, calc(100vw - 48px));
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  background: var(--paper);
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 20px 60px color-mix(in srgb, var(--ink) 35%, transparent);
+}
+
+.sheet::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: color-mix(in srgb, var(--ink) 40%, transparent);
+}
+
+.sheet [role="tablist"] {
+  display: flex;
+  gap: 8px;
+}
+
+.sheet [role="tab"] {
+  background: none;
+  border: 1px solid color-mix(in srgb, var(--ink) 20%, var(--paper));
+  border-radius: 6px;
+  padding: 0 16px;
+}
+
+.sheet [role="tab"][aria-selected="true"] {
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.sheet form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sheet label {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.sheet input,
+.sheet textarea {
+  border: 1px solid color-mix(in srgb, var(--ink) 25%, var(--paper));
+  border-radius: 6px;
+  padding: 8px 12px;
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.sheet input:focus,
+.sheet textarea:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  border-color: var(--accent);
+}
+
+/* A validation message is not a control: no colour, weight carries it. */
+.sheet [role="alert"] {
+  margin: 0;
+  font-weight: 600;
+}
+
+.sheet-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.sheet-actions button[type="submit"] {
+  background: var(--accent);
+  color: var(--paper);
+  border: none;
+  border-radius: 6px;
+  padding: 0 20px;
+  font-weight: 600;
+}
+
+.sheet-actions button[type="button"] {
+  background: none;
+  border: 1px solid color-mix(in srgb, var(--ink) 25%, var(--paper));
+  border-radius: 6px;
+  padding: 0 20px;
+}

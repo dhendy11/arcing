@@ -45,3 +45,31 @@ test("too many attempts says so rather than blaming the password", async () => {
 
   expect(await screen.findByRole("alert")).toHaveTextContent("Too many attempts. Wait a minute.");
 });
+
+test("the field is marked invalid and described by the error", async () => {
+  stubFetch(401);
+  render(<LoginForm onSignedIn={vi.fn()} />);
+
+  const input = screen.getByLabelText("Password");
+  await userEvent.type(input, "nope");
+  await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+  const alert = await screen.findByRole("alert");
+  expect(input).toHaveAttribute("aria-invalid", "true");
+  expect(input).toHaveAttribute("aria-describedby", alert.id);
+});
+
+test("retyping the field clears the error", async () => {
+  stubFetch(401);
+  render(<LoginForm onSignedIn={vi.fn()} />);
+
+  const input = screen.getByLabelText("Password");
+  await userEvent.type(input, "nope");
+  await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+  await screen.findByRole("alert");
+
+  await userEvent.type(input, "x");
+
+  expect(screen.queryByRole("alert")).toBeNull();
+  expect(input).toHaveAttribute("aria-invalid", "false");
+});
