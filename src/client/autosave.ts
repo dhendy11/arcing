@@ -109,6 +109,14 @@ export function createAutosave(deps: AutosaveDeps): Autosave {
     if (firstChangeAt !== null) {
       delay = Math.min(delay, Math.max(firstChangeAt + THROTTLE_MS - Date.now(), 0));
     }
+    // The cap above exists to stop starvation, not to override the real
+    // throttle: firstChangeAt can go stale (an edit that landed mid-flight
+    // keeps the original window's timestamp until the save completes), and
+    // once its window has passed the cap collapses to 0. Never schedule
+    // sooner than THROTTLE_MS after the last save actually sent, no matter
+    // what the cap computed. Harmless on the very first save, where
+    // lastSaveAt is still -Infinity.
+    delay = Math.max(delay, lastSaveAt + THROTTLE_MS - Date.now());
     schedule(delay);
   };
 
@@ -125,13 +133,40 @@ export function createAutosave(deps: AutosaveDeps): Autosave {
     lastSaveAt = Date.now();
     deps.onState("saving");
 
+    // deps.save is documented to return a Promise, but a mock (or a future
+    // implementation) could throw synchronously instead of rejecting.
+    // Route that through the Promise machinery here, before attempt below
+    // is constructed: that guarantees attempt's first await always defers
+    // to a microtask, which in turn guarantees inFlightPromise = attempt
+    // (after this block) always runs before attempt's own cleanup can,
+    // regardless of how deps.save fails. Without this, a synchronous throw
+    // would run attempt's cleanup before inFlightPromise was ever set,
+    // leaving it permanently non-null and wedging every future save.
+    let savePromise: Promise<SaveResult>;
+    try {
+      savePromise = deps.save(sending, force);
+    } catch (err) {
+      savePromise = Promise.reject(err);
+    }
+
     const attempt = (async (): Promise<void> => {
       let result: SaveResult;
       try {
-        result = await deps.save(sending, force);
-      } finally {
+        result = await savePromise;
+      } catch (err) {
+        // deps.save rejected or threw. There is no SaveResult to branch on,
+        // so this is handled the same way as the "error" case below: pause,
+        // surface it, and leave pending (and its mirror entry) untouched so
+        // a retry() can resend it.
         inFlightPromise = null;
+        if (stopped) return;
+        paused = true;
+        clearTimer();
+        deps.onState("unsaved");
+        deps.onError(err instanceof Error ? err.message : "the save failed unexpectedly");
+        return;
       }
+      inFlightPromise = null;
       if (stopped) return;
 
       switch (result.kind) {
@@ -146,8 +181,12 @@ export function createAutosave(deps: AutosaveDeps): Autosave {
           } else {
             // A newer edit arrived while this save was in flight. It is
             // still only mirrored under the just-cleared id, so rewrite it
-            // before the next attempt is scheduled.
+            // before the next attempt is scheduled. Re-stamp firstChangeAt
+            // too: this is a fresh unsaved run starting now, not a
+            // continuation of the run that just finished saving, so its
+            // own throttle window should start from here.
             if (pending) deps.mirror.write(pending);
+            firstChangeAt = Date.now();
             deps.onState("unsaved");
             scheduleNormal();
           }

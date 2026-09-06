@@ -3,7 +3,7 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { newArcDoc } from "@/core/doc";
 import type { ArcDoc } from "@/core/types";
 import type { SaveResult } from "./api";
-import { createAutosave, localStorageMirror, mirrorKey, OFFLINE_BACKOFF_MS } from "./autosave";
+import { createAutosave, localStorageMirror, mirrorKey, OFFLINE_BACKOFF_MS, THROTTLE_MS } from "./autosave";
 
 function doc(mainPoint = ""): ArcDoc {
   const base = newArcDoc({
@@ -198,13 +198,68 @@ test("a flush during an in-flight save issues no second PUT", async () => {
   expect(onState).toHaveBeenLastCalledWith("saved");
 });
 
-test("continuous typing still produces a save at least every five seconds", async () => {
-  const h = harness([]);
+test("continuous typing still produces saves, spaced at least five seconds apart", async () => {
+  const saveTimes: number[] = [];
+  const save = vi.fn<(doc: ArcDoc, force: boolean) => Promise<SaveResult>>((d) => {
+    saveTimes.push(Date.now());
+    // A save that takes real time to settle, so a keystroke can land while
+    // one is still in flight: the exact condition that let firstChangeAt go
+    // stale and, before the fix, collapse the throttle to zero.
+    return new Promise((resolve) => setTimeout(() => resolve({ kind: "saved", doc: d }), 250));
+  });
+  const auto = createAutosave({
+    save,
+    onState: vi.fn(),
+    onSaved: vi.fn(),
+    onConflict: vi.fn(),
+    onUnauthorized: vi.fn(),
+    onError: vi.fn(),
+    mirror: localStorageMirror(window.localStorage),
+    target: document,
+    isHidden: () => document.visibilityState === "hidden",
+  });
+
   for (let elapsed = 0; elapsed < 12_000; elapsed += 400) {
-    h.auto.changed(doc(`t${elapsed}`));
+    auto.changed(doc(`t${elapsed}`));
     await vi.advanceTimersByTimeAsync(400);
   }
-  expect(h.save.mock.calls.length).toBeGreaterThanOrEqual(2);
+  await vi.advanceTimersByTimeAsync(THROTTLE_MS);
+
+  expect(saveTimes.length).toBeGreaterThanOrEqual(2);
+  for (let i = 1; i < saveTimes.length; i += 1) {
+    expect(saveTimes[i] - saveTimes[i - 1]).toBeGreaterThanOrEqual(THROTTLE_MS);
+  }
+});
+
+test("a save that throws synchronously does not wedge autosave forever", async () => {
+  let calls = 0;
+  const onError = vi.fn();
+  const save = vi.fn<(doc: ArcDoc, force: boolean) => Promise<SaveResult>>((d) => {
+    calls += 1;
+    if (calls === 1) throw new Error("boom, synchronous");
+    return Promise.resolve({ kind: "saved", doc: d });
+  });
+  const auto = createAutosave({
+    save,
+    onState: vi.fn(),
+    onSaved: vi.fn(),
+    onConflict: vi.fn(),
+    onUnauthorized: vi.fn(),
+    onError,
+    mirror: localStorageMirror(window.localStorage),
+    target: document,
+    isHidden: () => document.visibilityState === "hidden",
+  });
+
+  auto.changed(doc("a"));
+  await vi.advanceTimersByTimeAsync(1000);
+  expect(onError).toHaveBeenCalledTimes(1);
+
+  // If the synchronous throw left inFlightPromise permanently non-null,
+  // this retry would never fire a second call.
+  auto.retry(doc("b"));
+  await vi.advanceTimersByTimeAsync(6000);
+  expect(calls).toBe(2);
 });
 
 test("a newer edit that arrived during a save is re-mirrored, not left only in memory", async () => {
