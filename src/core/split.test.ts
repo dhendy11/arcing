@@ -27,6 +27,37 @@ test("splitting at a word start makes two propositions numbered from one", () =>
   expect(validateDoc(doc)).toEqual([]);
 });
 
+// James 1:2-3 style: the ESV sets the em dash unspaced, word against word.
+const DASHED = "count it all joy, my brothers,\u2014when you meet trials of various kinds";
+
+function dashed(): ArcDoc {
+  return newArcDoc({
+    id: "d", reference: "James 1:2-3", canonical: "James 1:2-3", source: "paste",
+    text: DASHED, verses: [], now: new Date("2026-09-05T15:00:00Z"),
+  });
+}
+
+test("a word starts right after an unspaced em dash", () => {
+  const afterDash = DASHED.indexOf("when");
+  expect(wordStarts(DASHED)).toContain(afterDash);
+  // The dash itself is not a start: it rides with the word before it.
+  expect(wordStarts(DASHED)).not.toContain(afterDash - 1);
+});
+
+test("splitting at an em dash keeps the dash on the first proposition", () => {
+  const doc = splitAt(dashed(), DASHED.indexOf("when"));
+  expect(doc.propositions.map((p) => p.text)).toEqual([
+    "count it all joy, my brothers,\u2014",
+    "when you meet trials of various kinds",
+  ]);
+  expect(validateDoc(doc)).toEqual([]);
+});
+
+test("an en dash and a doubled em dash are not split points", () => {
+  expect(wordStarts("verses 1\u20132 here")).toEqual([0, 7, 11]);
+  expect(wordStarts("a\u2014\u2014b")).toEqual([0, 3]);
+});
+
 test("splitting mid-word is refused", () => {
   expect(() => splitAt(fresh(), 9)).toThrow(/word start/);
 });
@@ -115,9 +146,18 @@ test("status returns to split when the last arc dissolves", () => {
 });
 
 test("the tiling invariant survives any sequence of splits and rejoins", () => {
+  // Passages are generated, not fixed, and they carry unspaced and spaced em
+  // dashes (and a doubled one) so the dash word starts are exercised too.
+  const passage = fc
+    .array(fc.constantFrom("one", "two", "joy,", "\u2014", "\u2014\u2014", " ", "kinds."), { minLength: 1, maxLength: 30 })
+    .map((parts) => parts.join(""))
+    .filter((text) => text.trim().length > 0);
   fc.assert(
-    fc.property(fc.array(fc.nat(50), { maxLength: 40 }), (seq) => {
-      let doc = fresh();
+    fc.property(passage, fc.array(fc.nat(50), { maxLength: 40 }), (text, seq) => {
+      let doc = newArcDoc({
+        id: "d", reference: "Romans 12:1-2", canonical: "Romans 12:1-2", source: "paste",
+        text, verses: [], now: new Date("2026-09-05T15:00:00Z"),
+      });
       for (const n of seq) {
         const open = wordStarts(doc.passage.text).filter(
           (s) => s > 0 && !doc.propositions.some((p) => p.start === s)

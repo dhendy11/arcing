@@ -44,12 +44,23 @@ test("Ground and Inference carry Piper's warning", () => {
   );
 });
 
-test("the three circling relationships say so", () => {
+test("the three circling relationships say so, and say why, on screen", () => {
   render(<Palette doc={fourProps()} units={[prop("p1"), prop("p2")]} onPick={vi.fn()} />);
-  expect(screen.getByTestId("rel-AcPur")).toHaveTextContent("circle one");
-  expect(screen.getByTestId("rel-AcRes")).toHaveTextContent("circle one");
-  expect(screen.getByTestId("rel-SitR")).toHaveTextContent("circle one");
-  expect(screen.getByTestId("rel-G")).not.toHaveTextContent("circle one");
+  const note = "Either half can carry the main point here, so mark which one does.";
+  for (const code of ["AcPur", "AcRes", "SitR"]) {
+    expect(screen.getByTestId(`rel-${code}`)).toHaveTextContent("circle the main one");
+    expect(screen.getByTestId(`rel-${code}`)).toHaveTextContent(note);
+  }
+  expect(screen.getAllByText(note)).toHaveLength(3);
+  expect(screen.getByTestId("rel-G")).not.toHaveTextContent("circle the main one");
+  expect(screen.getByTestId("rel-G")).not.toHaveTextContent(note);
+});
+
+test("each row carries its English conjunctions under the definition", () => {
+  render(<Palette doc={fourProps()} units={[prop("p1"), prop("p2")]} onPick={vi.fn()} />);
+  expect(screen.getByTestId("rel-AcPur")).toHaveTextContent("in order that, so that, that, lest");
+  expect(screen.getByTestId("rel-QA")).toHaveTextContent("question mark");
+  expect(screen.getByTestId("rel-NegPos")).toHaveTextContent("not\u2026but");
 });
 
 test("three adjacent units enable only Series, Progression, Alternative and Bilateral", () => {

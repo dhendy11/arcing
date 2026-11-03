@@ -29,6 +29,14 @@ test("wrapping is greedy at the character budget and never splits a word", () =>
   expect(wrapLines("", 58)).toEqual([""]);
 });
 
+test("wrapping may break right after an unspaced em dash, and keeps it whole otherwise", () => {
+  expect(wrapLines("count it all joy, my brothers,\u2014when you meet trials", 34)).toEqual([
+    "count it all joy, my brothers,\u2014",
+    "when you meet trials",
+  ]);
+  expect(wrapLines("brothers,\u2014when you", 58)).toEqual(["brothers,\u2014when you"]);
+});
+
 test("the constants only the renderer reads are the mockup's", () => {
   // layout() never reads these three, so nothing else pins them. Off mockup A:
   // the number gutter is x="68" text-anchor="end", the first text baseline is

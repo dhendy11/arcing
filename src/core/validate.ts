@@ -96,10 +96,28 @@ export function validateDoc(doc: ArcDoc): Violation[] {
   return v;
 }
 
+/**
+ * U+2014 EM DASH. The ESV sets it unspaced ("word\u2014word"), most often in
+ * James, so a proposition can open right after one and the dash stays at the
+ * END of the proposition before it (RULED 2026-11-02). The en dash U+2013 is
+ * deliberately NOT a break: the ESV uses it in number ranges such as verse
+ * spans, never as unspaced punctuation between clauses.
+ */
+export const EM_DASH = "\u2014";
+
+/**
+ * A word starts after whitespace, or after an em dash. This is a strict
+ * superset of the whitespace-only rule it replaced, so every boundary an
+ * existing saved document carries is still a word start. A second dash
+ * directly after a dash is never a start, so a doubled dash stays whole.
+ */
 export function isWordStart(text: string, index: number): boolean {
   if (index <= 0) return index === 0;
   if (index >= text.length) return false;
-  return /\S/.test(text[index]) && /\s/.test(text[index - 1]);
+  const here = text[index];
+  const before = text[index - 1];
+  if (!/\S/.test(here)) return false;
+  return /\s/.test(before) || (before === EM_DASH && here !== EM_DASH);
 }
 
 function structuralViolations(doc: ArcDoc): Violation[] {

@@ -91,11 +91,11 @@ test("tapping a proposition's circle target circles that member", async () => {
 /**
  * RULING 1. layout() puts an arc's own label target and its parent's circle
  * target for that member at the identical point, because a circled member arc
- * is circled on its own symbol. The arc label owns that tap: relabel and
- * dissolve are the structural actions and have to stay reachable. The circle
- * for an arc member is set from the parent arc's own controls instead.
+ * is circled on its own symbol. While the parent is NOT focused, the arc label
+ * owns that tap: relabel and dissolve are the structural actions and have to
+ * stay reachable.
  */
-test("tapping an arc member's circle target selects that arc rather than circling it", async () => {
+test("with the parent not focused, tapping an arc member's circle target selects that arc", async () => {
   const onChange = vi.fn();
   const { container } = render(<RelateView doc={piperRomansDoc()} onChange={onChange} />);
 
@@ -104,6 +104,23 @@ test("tapping an arc member's circle target selects that arc rather than circlin
   expect(onChange).not.toHaveBeenCalled();
   expect(container.querySelector('[data-arc="a2"]')).toHaveAttribute("data-selected", "true");
   expect(screen.getByRole("button", { name: "Dissolve" })).toBeInTheDocument();
+});
+
+/**
+ * RULING 1, AMENDED 2026-11-02. With the PARENT focused, its panel is asking
+ * which half to circle, so a tap on the member arc's symbol on the diagram
+ * answers it, the same as a tap on a proposition member does.
+ */
+test("with the parent focused, tapping an arc member on the diagram circles it", async () => {
+  const onChange = vi.fn();
+  const { container } = render(<RelateView doc={piperRomansDoc()} onChange={onChange} />);
+
+  await select('[data-arc="a3"]', container);
+  await select('[data-circle="a3:1"]', container);
+
+  const next = onChange.mock.calls[0][0] as ArcDoc;
+  expect(next.arcs.find((a) => a.id === "a3")?.circled).toBe(1);
+  expect(container.querySelector('[data-arc="a2"]')).toHaveAttribute("data-selected", "false");
 });
 
 test("a circling arc's own controls move the circle onto an arc member", async () => {
@@ -129,7 +146,19 @@ test("an arc still missing its circle says so", async () => {
 
   await select('[data-arc="a1"]', container);
 
-  expect(screen.getByTestId("circle-missing")).toBeInTheDocument();
+  expect(screen.getByTestId("circle-missing")).toHaveTextContent(
+    "Circle the half that is primary in the author's mind. Piper circles the Purpose in Romans 12:2 " +
+      '"because that is primary in Paul\'s mind; it is the goal, the main point."'
+  );
+});
+
+test("the screen says why every proposition already has its own arc", () => {
+  render(<RelateView doc={fourProps()} onChange={vi.fn()} />);
+  expect(
+    screen.getByText(
+      "Each proposition starts as its own arc (Piper p. 21). Join neighbours into larger arcs until one arc spans the passage."
+    )
+  ).toBeInTheDocument();
 });
 
 test("tapping an arc offers Relabel and Dissolve", async () => {

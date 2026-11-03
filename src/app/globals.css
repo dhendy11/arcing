@@ -303,11 +303,13 @@ button {
   padding: 0 20px;
 }
 
-/* Arc frame: wraps Split, Relate and Summarize. Wider than .page because the
-   working screens need room for the diagram, not just a column of text. */
+/* Arc frame: wraps Split, Relate and Summarize. It takes the FULL window
+   width (fill the page, option A, RULED 2026-11-02): a 960 px cap left the
+   1024 px diagram scrolling sideways on the iPad and wasted the margins on a
+   wide Mac. The same frame on all three tabs, so the bar never jumps when
+   the tab changes. */
 
 .arc-frame {
-  max-width: 960px;
   margin: 0 auto;
   padding: 0 24px 32px;
 }
@@ -472,6 +474,10 @@ button {
   grid-template-columns: minmax(0, 1fr) 260px;
   align-items: start;
   gap: 32px;
+  /* The frame went full width for the diagram; running prose did not need
+     to. This keeps the passage at the reading measure it had inside the old
+     960 px frame (960 less 2 x 24 px padding). */
+  max-width: 912px;
 }
 
 .split-screen .rules {
@@ -668,19 +674,34 @@ button {
   gap: 24px;
 }
 
+/* One always-visible line on why every proposition already has an arc. */
+.relate-intro {
+  margin: 0;
+  font-size: 15px;
+}
+
 /* ArcSvg asks for width 100% against a 1024 unit viewBox, so a 44 unit
-   target is 44 CSS px only while the SVG renders at exactly 1024 px wide.
-   Any page padding would silently scale every target under the binding
-   floor. Mockup A answers this itself: a fixed 1024 px diagram inside a
-   horizontally scrollable wrapper, never a scale-to-fit. */
+   target is 44 CSS px only while the SVG renders at 1024 px or wider; any
+   narrower would silently scale every target under the binding floor.
+
+   Fill the page, option A (RULED 2026-11-02): the wrapper bleeds through the
+   frame's 24 px side padding to the window edge, and the diagram renders at
+   max(1024 px, that full width). On a wide screen it scales UP to fill the
+   window; on the 1024 px iPad the full width IS 1024 px, so it fits exactly
+   with no sideways scroll. Only the CSS scale changes: the geometry in
+   layout.ts LAYOUT does not. The bleed costs nothing visually, because the
+   diagram carries its own 68 unit number gutter on the left and empty
+   viewBox on the right. Anything under 1024 px wide still scrolls sideways
+   rather than shrink a target, which is what overflow-x is kept for. */
 .arc-scroll {
+  margin-inline: -24px;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
 }
 
 .arc-scroll .arc-svg {
   display: block;
-  width: 1024px;
+  width: max(1024px, 100%);
   height: auto;
 }
 
@@ -820,7 +841,9 @@ button {
 
 .palette-row button[data-unfit="true"] .sym,
 .palette-row button[data-unfit="true"] .name,
-.palette-row button[data-unfit="true"] .def {
+.palette-row button[data-unfit="true"] .def,
+.palette-row button[data-unfit="true"] .circle-note,
+.palette-row button[data-unfit="true"] .conj {
   opacity: 0.7;
 }
 
@@ -851,6 +874,22 @@ button {
   line-height: 1.35;
 }
 
+/* Why a circling relationship circles, then the English words that usually
+   signal each relationship: one line each under the definition, always on
+   screen (RULED 2026-11-02). Italic sets the conjunctions apart as quoted
+   words rather than more definition; size and style carry it, never colour. */
+.palette-row .circle-note,
+.palette-row .conj {
+  display: block;
+  margin-top: 2px;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.palette-row .conj {
+  font-style: italic;
+}
+
 /* The reason a row is unfit. No colour: it is not a control. No extra
    weight either, because the same selection-level reason prints on all 18
    rows at once, and bolding it there buries the names Drew is comparing.
@@ -876,11 +915,84 @@ button {
    places it on its own line, and an input's 100% basis fills the next line
    by itself, which pushes the following label onto a line of its own too. */
 
+/* The finished arc beside the form (RULED 2026-11-02: arc LEFT, form right
+   on a wide screen; stacked arc-above-form otherwise). The arc uses the same
+   .arc-scroll as Relate, so it renders at max(1024 px, available width) and
+   never shrinks below the scale it was drawn at.
+
+   BREAKPOINT, a reversible default rather than a ruling: side by side from a
+   1440 px window up, the narrowest width where the arc keeps its full 1024 px
+   AND the form still gets a usable column (1440 less 48 px frame padding,
+   1024 px arc and a 32 px gap leaves 336 px). Below that, including iPad
+   landscape at 1024 px, the two stack. As the window widens past 1440 px the
+   form grows first, to its 640 px cap, and only then does the arc scale. */
+.summarize-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+@media (min-width: 1440px) {
+  .summarize-layout {
+    display: grid;
+    grid-template-columns: minmax(1024px, 1fr) minmax(0, 640px);
+    align-items: start;
+    gap: 32px;
+  }
+
+  /* Side by side, the arc sits in its own grid column; the full-bleed
+     negative margin is only for the stacked, window-wide case. */
+  .summarize-layout .summary-arc {
+    margin-inline: 0;
+  }
+}
+
 .summarize-screen {
   display: flex;
   flex-direction: column;
   gap: 24px;
   max-width: 640px;
+}
+
+/* The guiding line under each field, always on screen (RULED 2026-11-02).
+   Not a control and not a warning, so no colour; it sits tight under the
+   field it guides rather than a full flex gap away. */
+.summarize-screen .field-hint {
+  margin: -16px 0 0;
+  font-size: 14px;
+}
+
+.levels .field-hint {
+  margin: -8px 0 12px;
+}
+
+/* Piper's own Romans 12 levels as a worked example, never prefilled. Faint
+   is ink mixed 70% onto paper, rgb(95,92,90), 6.28:1: the same composite as
+   every other dim in this file, set on colour rather than opacity so the
+   connecting phrase inside it can keep full-strength accent (6.32:1), which
+   opacity would have dragged to 3.47:1. The connecting phrase is the one
+   thing highlighted, because it is the part a first summary leaves out. */
+.worked-example {
+  margin: 0 0 20px;
+  padding-left: 12px;
+  border-left: 2px solid var(--rule);
+  color: color-mix(in srgb, var(--ink) 70%, var(--paper));
+  font-size: 15px;
+}
+
+.worked-example ol {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.worked-example .example-connector {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.worked-example figcaption {
+  margin-top: 4px;
+  font-size: 13px;
 }
 
 .summarize-screen label {

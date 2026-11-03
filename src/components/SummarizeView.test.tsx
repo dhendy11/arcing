@@ -191,3 +191,36 @@ test("an unfinished circle blocks completion and says which arc", () => {
   render(<SummarizeView doc={uncircled} onChange={vi.fn()} />);
   expect(screen.getByTestId("missing-list")).toHaveTextContent("A circled member on the Action-Purpose arc (a2)");
 });
+
+test("the finished arc is on screen and view-only: no target on it can select or circle", async () => {
+  const onChange = vi.fn();
+  render(<SummarizeView doc={ready()} onChange={onChange} />);
+  const arc = screen.getByTestId("summary-arc");
+  expect(arc.querySelector("svg.arc-svg")).not.toBeNull();
+  expect(arc.querySelectorAll("[data-leaf]")).toHaveLength(4);
+  expect(arc.querySelectorAll(".circle-ring")).toHaveLength(2);
+  expect(arc.querySelectorAll("[data-prop], [data-arc], [data-circle]")).toHaveLength(0);
+  await userEvent.click(arc.querySelector("svg.arc-svg") as Element);
+  expect(onChange).not.toHaveBeenCalled();
+});
+
+test("every field carries its guiding line, and Piper's levels are an example, never prefilled", () => {
+  render(<SummarizeView doc={piperRomansDoc()} onChange={vi.fn()} />);
+  expect(screen.getByLabelText("Main point")).toHaveAccessibleDescription(
+    "In one sentence: what the one arc over the whole passage says."
+  );
+  expect(screen.getByLabelText("Why it matters")).toHaveAccessibleDescription("One line: how this lands this week.");
+  expect(
+    screen.getByText(
+      "Start at the bottom (the most basic argument) and paraphrase each level up to the main conclusion. Put a connecting phrase between levels."
+    )
+  ).toBeInTheDocument();
+  const example = screen.getByTestId("worked-example");
+  expect(example).toHaveTextContent("Be changed in the way you think");
+  expect(example).toHaveTextContent("in order that you can heartily approve God's will,");
+  expect(example).toHaveTextContent("in order that you can honor him in your daily, bodily existence.");
+  expect(example).toHaveTextContent("Piper, Romans 12:1-2 (pp. 23-24)");
+  expect(example.querySelectorAll(".example-connector")).toHaveLength(2);
+  expect(screen.getByLabelText("Main point")).toHaveValue("");
+  expect(screen.queryByLabelText("Level 1")).toBeNull();
+});

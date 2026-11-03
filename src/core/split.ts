@@ -3,11 +3,15 @@ import { ancestorsOfProp } from "./tree";
 import type { ArcDoc, Member, Proposition } from "./types";
 import { isWordStart } from "./validate";
 
-/** Index of the first character of every word in the passage. */
+/**
+ * Index of the first character of every word in the passage. Delegates to
+ * isWordStart so the split screen offers exactly the boundaries validateDoc
+ * (and therefore the PUT route) accepts, em dash starts included.
+ */
 export function wordStarts(text: string): number[] {
   const starts: number[] = [];
   for (let i = 0; i < text.length; i += 1) {
-    if (/\S/.test(text[i]) && (i === 0 || /\s/.test(text[i - 1]))) starts.push(i);
+    if (/\S/.test(text[i]) && isWordStart(text, i)) starts.push(i);
   }
   return starts;
 }

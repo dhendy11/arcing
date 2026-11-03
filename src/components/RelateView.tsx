@@ -15,6 +15,11 @@ import type { ArcDoc, Member } from "@/core/types";
 import { ArcSvg } from "./ArcSvg";
 import { Palette } from "./Palette";
 
+/** The missing-circle prompt, quoting Piper p. 22 (RULED 2026-11-02). */
+const CIRCLE_PROMPT =
+  "Circle the half that is primary in the author's mind. Piper circles the Purpose in Romans 12:2 " +
+  '"because that is primary in Paul\'s mind; it is the goal, the main point."';
+
 /** How a member reads in the circle controls: the diagram's own numbering. */
 function memberLabel(doc: ArcDoc, member: Member): string {
   if (member.kind === "prop") {
@@ -70,21 +75,32 @@ export function RelateView({ doc, onChange }: { doc: ArcDoc; onChange: (doc: Arc
   }
 
   /**
-   * RULING 1. layout() places an arc's own LABEL target and its parent's
-   * CIRCLE target for that member at the identical point, because a circled
-   * member arc is circled on its own symbol, which is Piper's reading. The
-   * arc label owns that tap: relabel and dissolve are the structural actions
-   * and must stay reachable, and a nested arc has no other handle. So the
-   * callback is read rather than the pixel: a circle tap that lands on an ARC
-   * member is a selection of that arc. The circle for an arc member is set
-   * from the parent's own controls below, which is also the right owner,
-   * since `circled` is a field on the PARENT.
+   * RULING 1, AMENDED 2026-11-02. layout() places an arc's own LABEL target
+   * and its parent's CIRCLE target for that member at the identical point,
+   * because a circled member arc is circled on its own symbol, which is
+   * Piper's reading. The parent's circle target is drawn later, so it is the
+   * one a tap there reaches, and which of the two actions the tap means is
+   * read from the selection, not from the pixel:
+   *
+   * - The PARENT is focused (selected alone, so its "Circled member" panel
+   *   is open and asking which half): the tap circles the member arc, exactly
+   *   as a tap circles a proposition member. Drew hit this on 2026-11-02:
+   *   the panel asked which one, and tapping the member arc on the diagram
+   *   selected it instead of answering.
+   * - Anything else: the tap selects the member arc, so relabel and dissolve
+   *   stay reachable on a nested arc, which has no other handle. To reach a
+   *   member arc while its parent is focused, tap the parent's label first to
+   *   let it go.
+   *
+   * Nothing is lost by the first case: selecting a member arc alongside its
+   * own focused parent was never relatable. The panel's "Circled member"
+   * buttons below stay as the fallback for the same action.
    */
   function circle(arcId: string, memberIndex: number): void {
     const node = arcById(doc, arcId);
     const member = node?.members[memberIndex];
     if (!member) return;
-    if (member.kind === "arc") {
+    if (member.kind === "arc" && focusedArc !== arcId) {
       toggle(member);
       return;
     }
@@ -104,12 +120,21 @@ export function RelateView({ doc, onChange }: { doc: ArcDoc; onChange: (doc: Arc
 
   return (
     <div className="relate-screen">
+      {/* Always visible (RULED 2026-11-02): why every proposition already has an arc. */}
+      <p className="relate-intro">
+        Each proposition starts as its own arc (Piper p. 21). Join neighbours into larger arcs until one arc
+        spans the passage.
+      </p>
+
       {/*
-        RULING 2. ArcSvg asks for width 100% against a 1024 unit viewBox, so a
-        44 unit target is only 44 CSS px while the SVG renders at exactly
-        1024 px. Mockup A answers this itself: a fixed 1024 px diagram inside a
-        horizontally scrollable wrapper, never a scale-to-fit, so the touch
-        floor holds on the 1024 px iPad whatever padding the frame carries.
+        RULING 2, AMENDED 2026-11-02 (fill the page, option A). ArcSvg asks for
+        width 100% against a 1024 unit viewBox, so a 44 unit target is 44 CSS
+        px only while the SVG renders at 1024 px or wider. .arc-scroll in
+        globals.css renders it at max(1024 px, the full window width): it
+        scales UP to fill a wide screen and never drops below 1024 px, and on
+        the 1024 px iPad it bleeds through the frame padding to the window
+        edge so it fits with no sideways scroll. The scroll wrapper stays as
+        the fallback for anything narrower.
       */}
       <div className="arc-scroll">
         <ArcSvg doc={doc} selection={selection} onSelectUnit={toggle} onCircle={circle} />
@@ -155,7 +180,7 @@ export function RelateView({ doc, onChange }: { doc: ArcDoc; onChange: (doc: Arc
               ))}
               {focusedNode.circled === null ? (
                 <p className="circle-missing" data-testid="circle-missing">
-                  {focusedRel.name} circles one of its two members. Choose which.
+                  {CIRCLE_PROMPT}
                 </p>
               ) : null}
             </div>

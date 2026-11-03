@@ -33,6 +33,29 @@ test("definitions are the cheat sheet's wording verbatim", () => {
   );
 });
 
+test("every relationship carries the cheat sheet's English conjunctions verbatim", () => {
+  expect(Object.fromEntries(RELATIONSHIPS.map((r) => [r.code, r.conjunctions]))).toEqual({
+    S: "and, moreover, likewise, neither, nor",
+    P: "then, and, moreover, furthermore",
+    A: "or, but, while, on the other hand",
+    AcMn: "in that, by, participles",
+    Cf: "even as, as…so, like, just as",
+    NegPos: "not…but",
+    IdExp: "that is, in other words",
+    QA: "question mark",
+    G: "for, because, since",
+    Inf: "therefore, accordingly",
+    BL: "for, because, therefore, so",
+    AcRes: "so that, that, with the result that",
+    AcPur: "in order that, so that, that, lest",
+    IfTh: "if…then, provided that, except, unless",
+    T: "when, whenever, after, before",
+    L: "where, wherever",
+    Csv: "although, though, yet, nevertheless, but, however",
+    SitR: "and",
+  });
+});
+
 test("coordinate relationships take two or more members, the rest take two", () => {
   for (const code of ["S", "P", "A"] as const) {
     expect(relationship(code).minMembers).toBe(2);

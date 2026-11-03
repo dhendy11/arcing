@@ -23,14 +23,20 @@ const NEG_POS_HALF_W = 12;
 
 export function ArcSvg({
   doc,
-  selection,
+  selection = [],
   onSelectUnit,
   onCircle,
 }: {
   doc: ArcDoc;
-  selection: Member[];
-  onSelectUnit: (unit: Member) => void;
-  onCircle: (arcId: string, memberIndex: number) => void;
+  selection?: Member[];
+  /*
+    Leaving a handler out leaves out every hit target it would own, so with
+    neither the diagram is VIEW-ONLY: nothing on it can select or circle,
+    which is how Summarize shows the finished arc (RULED 2026-11-02). The
+    circled rings still draw; they are part of the arc, not a control.
+  */
+  onSelectUnit?: (unit: Member) => void;
+  onCircle?: (arcId: string, memberIndex: number) => void;
 }) {
   const geometry = layout(doc, "stacked");
   const selected = new Set(selection.map(memberKey));
@@ -56,17 +62,19 @@ export function ArcSvg({
                 {line}
               </text>
             ))}
-            <rect
-              data-prop={box.id}
-              data-selected={isSelected}
-              x={0}
-              y={box.y}
-              width={LAYOUT.BASELINE_X}
-              height={box.h}
-              fill={isSelected ? COLORS.accent : "transparent"}
-              fillOpacity={isSelected ? 0.12 : 0}
-              onClick={() => onSelectUnit({ kind: "prop", ref: box.id })}
-            />
+            {onSelectUnit === undefined ? null : (
+              <rect
+                data-prop={box.id}
+                data-selected={isSelected}
+                x={0}
+                y={box.y}
+                width={LAYOUT.BASELINE_X}
+                height={box.h}
+                fill={isSelected ? COLORS.accent : "transparent"}
+                fillOpacity={isSelected ? 0.12 : 0}
+                onClick={() => onSelectUnit({ kind: "prop", ref: box.id })}
+              />
+            )}
           </g>
         );
       })}
@@ -119,15 +127,17 @@ export function ArcSvg({
               whole group: a group's bounding box is mostly empty, so a real
               browser click at its centre lands on whatever is painted there.
             */}
-            <circle
-              data-arc={shape.id}
-              data-selected={isSelected}
-              cx={shape.labelX}
-              cy={shape.labelY - LAYOUT.LABEL_BASELINE}
-              r={TARGET_R}
-              fill="transparent"
-              onClick={() => onSelectUnit({ kind: "arc", ref: shape.id })}
-            />
+            {onSelectUnit === undefined ? null : (
+              <circle
+                data-arc={shape.id}
+                data-selected={isSelected}
+                cx={shape.labelX}
+                cy={shape.labelY - LAYOUT.LABEL_BASELINE}
+                r={TARGET_R}
+                fill="transparent"
+                onClick={() => onSelectUnit({ kind: "arc", ref: shape.id })}
+              />
+            )}
 
             {shape.circles.map((circle) => {
               const isCircled = node.circled === circle.memberIndex;
@@ -136,21 +146,23 @@ export function ArcSvg({
                   {isCircled ? (
                     <ellipse cx={circle.x} cy={circle.y} rx={CIRCLE_RX} ry={CIRCLE_RY} className="stroke circle-ring" />
                   ) : null}
-                  <circle
-                    data-circle={`${shape.id}:${circle.memberIndex}`}
-                    data-circled={isCircled}
-                    data-missing={missingCircle}
-                    cx={circle.x}
-                    cy={circle.y}
-                    r={TARGET_R}
-                    fill="transparent"
-                    stroke={missingCircle ? AMBER : "transparent"}
-                    strokeDasharray={missingCircle ? "3 3" : undefined}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      onCircle(shape.id, circle.memberIndex);
-                    }}
-                  />
+                  {onCircle === undefined ? null : (
+                    <circle
+                      data-circle={`${shape.id}:${circle.memberIndex}`}
+                      data-circled={isCircled}
+                      data-missing={missingCircle}
+                      cx={circle.x}
+                      cy={circle.y}
+                      r={TARGET_R}
+                      fill="transparent"
+                      stroke={missingCircle ? AMBER : "transparent"}
+                      strokeDasharray={missingCircle ? "3 3" : undefined}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        onCircle(shape.id, circle.memberIndex);
+                      }}
+                    />
+                  )}
                 </g>
               );
             })}

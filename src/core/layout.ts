@@ -112,16 +112,25 @@ export const LAYOUT = {
 export function wrapLines(text: string, maxChars: number): string[] {
   const words = text.split(/\s+/).filter(Boolean);
   if (words.length === 0) return [""];
+  /*
+    A line may also break right after an unspaced em dash (RULED 2026-11-02),
+    the same place a proposition may start. Each whitespace word is cut into
+    pieces after every em dash; a piece that continues a word joins its line
+    with no space, so an unbroken "word\u2014word" still prints as written.
+  */
+  const pieces = words.flatMap((word) =>
+    word.split(/(?<=\u2014)(?=[^\u2014])/).map((piece, i) => ({ piece, joiner: i === 0 ? " " : "" }))
+  );
   const lines: string[] = [];
   let line = "";
-  for (const word of words) {
+  for (const { piece, joiner } of pieces) {
     if (line === "") {
-      line = word;
-    } else if (line.length + 1 + word.length <= maxChars) {
-      line = `${line} ${word}`;
+      line = piece;
+    } else if (line.length + joiner.length + piece.length <= maxChars) {
+      line = `${line}${joiner}${piece}`;
     } else {
       lines.push(line);
-      line = word;
+      line = piece;
     }
   }
   lines.push(line);

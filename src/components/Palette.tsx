@@ -4,6 +4,9 @@ import { canRelabel, canRelate, selectionFit } from "@/core/arcTree";
 import { GROUP_HEADINGS, GROUP_ORDER, RELATIONSHIPS, type RelCode } from "@/core/relationships";
 import type { ArcDoc, Member } from "@/core/types";
 
+/** Under each of the three circling relationships (RULED 2026-11-02). */
+const CIRCLE_NOTE = "Either half can carry the main point here, so mark which one does.";
+
 /**
  * All 18 on screen at once, in Piper's four groups, each with its one line
  * definition. This is the whole reason the tool exists rather than Biblearc:
@@ -83,9 +86,16 @@ export function Palette({
                     <span className="sym">{rel.symbol}</span>
                     <span className="name">
                       {rel.name}
-                      {rel.requiresCircle ? <span className="ring">circle one</span> : null}
+                      {rel.requiresCircle ? <span className="ring">circle the main one</span> : null}
                     </span>
                     <span className="def">{rel.definition}</span>
+                    {/*
+                      Both lines are always on screen (RULED 2026-11-02), never
+                      behind a "?" or a tooltip: they are part of what is being
+                      compared, the same as the definition.
+                    */}
+                    {rel.requiresCircle ? <span className="circle-note">{CIRCLE_NOTE}</span> : null}
+                    <span className="conj">{rel.conjunctions}</span>
                     {unfit ? <span className="why">{fit.reason}</span> : null}
                   </button>
                   {lastCarryingWarning ? (

@@ -2,7 +2,7 @@ import { expect, test } from "vitest";
 import { newArcDoc } from "./doc";
 import type { RelCode } from "./relationships";
 import type { ArcDoc } from "./types";
-import { validateDoc } from "./validate";
+import { isWordStart, validateDoc } from "./validate";
 
 const TEXT = "one two three four";
 
@@ -57,6 +57,12 @@ test("a boundary that is not a word start is a violation", () => {
   doc.propositions[0] = { id: "p1", start: 0, end: 6, text: "one tw" };
   doc.propositions[1] = { id: "p2", start: 6, end: 18, text: "o three four" };
   expect(codes(doc)).toContain("boundary_not_word_start");
+});
+
+test("a boundary right after an unspaced em dash is a word start", () => {
+  expect(isWordStart("joy,\u2014when", 5)).toBe(true);
+  expect(isWordStart("joy,\u2014when", 4)).toBe(false);
+  expect(isWordStart("1\u20132", 2)).toBe(false);
 });
 
 test("proposition ids must be p1..pn in order", () => {

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { completionMissing, deriveStatus } from "@/core/status";
 import type { ArcDoc, Level, Summary } from "@/core/types";
+import { ArcSvg } from "./ArcSvg";
 
 /** The topmost level has nothing above it, so its connector is always "". */
 function normalizeLevels(levels: Level[]): Level[] {
@@ -51,127 +52,171 @@ export function SummarizeView({ doc, onChange }: { doc: ArcDoc; onChange: (doc: 
   }
 
   return (
-    <div className="summarize-screen">
-      <label htmlFor="main-point">Main point</label>
-      <input
-        id="main-point"
-        value={doc.summary.mainPoint}
-        onChange={(e) => withSummary({ ...doc.summary, mainPoint: e.target.value })}
-      />
+    /*
+      RULED 2026-11-02: the finished arc sits VIEW-ONLY beside the form, so
+      the summary is written looking at the argument it summarises. ArcSvg
+      with no handlers draws no hit targets, so nothing here can change the
+      arc. Wide screens put it to the LEFT of the form; narrower ones stack it
+      above. The breakpoint lives in globals.css (.summarize-layout).
+    */
+    <div className="summarize-layout">
+      <div className="arc-scroll summary-arc" data-testid="summary-arc">
+        <ArcSvg doc={doc} />
+      </div>
 
-      <section className="levels">
-        <h2>The argument, bottom to top</h2>
-        {/*
-          Piper's argument is bottom to top (levels[0] is the bottom), but a
-          page reads top to bottom, so the DISPLAY order is reversed here
-          while every id, label and callback keeps the REAL array index: a
-          reversed .map would have "Move level 1 up" move level 1 visibly
-          DOWN the screen, which is the one thing about the only reorder
-          control a user cannot reason their way out of. The connector for
-          level i renders BEFORE that level's own text so it prints right
-          below the row for level i+1 that it connects into, sitting as the
-          visual seam between the two rows it joins rather than trailing the
-          row it belongs to.
-        */}
-        {levels
-          .map((level, index) => ({ level, index }))
-          .reverse()
-          .map(({ level, index }) => (
-            <div key={index} className="level">
-              {index === levels.length - 1 ? null : (
-                <>
-                  <label htmlFor={`connector-${index + 1}`}>{`Connector above level ${index + 1}`}</label>
-                  <input
-                    id={`connector-${index + 1}`}
-                    value={level.connector}
-                    onChange={(e) =>
-                      setLevels(levels.map((l, i) => (i === index ? { ...l, connector: e.target.value } : l)))
-                    }
-                  />
-                </>
-              )}
+      <div className="summarize-screen">
+        <label htmlFor="main-point">Main point</label>
+        <input
+          id="main-point"
+          aria-describedby="main-point-hint"
+          value={doc.summary.mainPoint}
+          onChange={(e) => withSummary({ ...doc.summary, mainPoint: e.target.value })}
+        />
+        <p className="field-hint" id="main-point-hint">
+          In one sentence: what the one arc over the whole passage says.
+        </p>
 
-              <label htmlFor={`level-${index + 1}`}>{`Level ${index + 1}`}</label>
-              <input
-                id={`level-${index + 1}`}
-                value={level.text}
-                onChange={(e) =>
-                  setLevels(levels.map((l, i) => (i === index ? { ...l, text: e.target.value } : l)))
-                }
-              />
+        <section className="levels">
+          <h2>The argument, bottom to top</h2>
+          <p className="field-hint">
+            Start at the bottom (the most basic argument) and paraphrase each level up to the main conclusion. Put
+            a connecting phrase between levels.
+          </p>
+          {/*
+            Piper's own levels for Romans 12:1-2, shown faint as a worked
+            example and NEVER prefilled into an input (spec: nothing is
+            prefilled). The connecting phrase is the one thing marked, because
+            it is the part of a level a first summary most often leaves out.
+          */}
+          <figure className="worked-example" data-testid="worked-example">
+            <ol>
+              <li>Be changed in the way you think</li>
+              <li>
+                <span className="example-connector">in order that</span> you can heartily approve God&apos;s will,
+              </li>
+              <li>
+                <span className="example-connector">in order that</span> you can honor him in your daily, bodily
+                existence.
+              </li>
+            </ol>
+            <figcaption>Piper, Romans 12:1-2 (pp. 23-24)</figcaption>
+          </figure>
+          {/*
+            Piper's argument is bottom to top (levels[0] is the bottom), but a
+            page reads top to bottom, so the DISPLAY order is reversed here
+            while every id, label and callback keeps the REAL array index: a
+            reversed .map would have "Move level 1 up" move level 1 visibly
+            DOWN the screen, which is the one thing about the only reorder
+            control a user cannot reason their way out of. The connector for
+            level i renders BEFORE that level's own text so it prints right
+            below the row for level i+1 that it connects into, sitting as the
+            visual seam between the two rows it joins rather than trailing the
+            row it belongs to.
+          */}
+          {levels
+            .map((level, index) => ({ level, index }))
+            .reverse()
+            .map(({ level, index }) => (
+              <div key={index} className="level">
+                {index === levels.length - 1 ? null : (
+                  <>
+                    <label htmlFor={`connector-${index + 1}`}>{`Connector above level ${index + 1}`}</label>
+                    <input
+                      id={`connector-${index + 1}`}
+                      value={level.connector}
+                      onChange={(e) =>
+                        setLevels(levels.map((l, i) => (i === index ? { ...l, connector: e.target.value } : l)))
+                      }
+                    />
+                  </>
+                )}
 
+                <label htmlFor={`level-${index + 1}`}>{`Level ${index + 1}`}</label>
+                <input
+                  id={`level-${index + 1}`}
+                  value={level.text}
+                  onChange={(e) =>
+                    setLevels(levels.map((l, i) => (i === index ? { ...l, text: e.target.value } : l)))
+                  }
+                />
+
+                <button
+                  type="button"
+                  aria-label={`Move level ${index + 1} up`}
+                  disabled={index === levels.length - 1}
+                  onClick={() => {
+                    const next = [...levels];
+                    [next[index], next[index + 1]] = [next[index + 1], next[index]];
+                    setLevels(next);
+                  }}
+                >
+                  Up
+                </button>
+                <button
+                  type="button"
+                  aria-label={`Remove level ${index + 1}`}
+                  onClick={() => requestRemove(index)}
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+          <button type="button" onClick={() => setLevels([...levels, { text: "", connector: "" }])}>
+            Add level
+          </button>
+        </section>
+
+        {pendingRemove === null ? null : (
+          <div className="modal" role="dialog" aria-label="This removes what you wrote">
+            <p>{`Level ${pendingRemove + 1}'s text is gone if you remove it.`}</p>
+            <div className="modal-actions">
+              <button type="button" onClick={() => setPendingRemove(null)}>
+                Cancel
+              </button>
               <button
                 type="button"
-                aria-label={`Move level ${index + 1} up`}
-                disabled={index === levels.length - 1}
+                className="destructive"
                 onClick={() => {
-                  const next = [...levels];
-                  [next[index], next[index + 1]] = [next[index + 1], next[index]];
-                  setLevels(next);
+                  setLevels(levels.filter((_, i) => i !== pendingRemove));
+                  setPendingRemove(null);
                 }}
               >
-                Up
-              </button>
-              <button
-                type="button"
-                aria-label={`Remove level ${index + 1}`}
-                onClick={() => requestRemove(index)}
-              >
-                Remove
+                Remove anyway
               </button>
             </div>
-          ))}
-        <button type="button" onClick={() => setLevels([...levels, { text: "", connector: "" }])}>
-          Add level
-        </button>
-      </section>
-
-      {pendingRemove === null ? null : (
-        <div className="modal" role="dialog" aria-label="This removes what you wrote">
-          <p>{`Level ${pendingRemove + 1}'s text is gone if you remove it.`}</p>
-          <div className="modal-actions">
-            <button type="button" onClick={() => setPendingRemove(null)}>
-              Cancel
-            </button>
-            <button
-              type="button"
-              className="destructive"
-              onClick={() => {
-                setLevels(levels.filter((_, i) => i !== pendingRemove));
-                setPendingRemove(null);
-              }}
-            >
-              Remove anyway
-            </button>
           </div>
-        </div>
-      )}
+        )}
 
-      <label htmlFor="why">Why it matters</label>
-      <input
-        id="why"
-        value={doc.summary.whyItMatters}
-        onChange={(e) => withSummary({ ...doc.summary, whyItMatters: e.target.value })}
-      />
+        <label htmlFor="why">Why it matters</label>
+        <input
+          id="why"
+          aria-describedby="why-hint"
+          value={doc.summary.whyItMatters}
+          onChange={(e) => withSummary({ ...doc.summary, whyItMatters: e.target.value })}
+        />
+        <p className="field-hint" id="why-hint">
+          One line: how this lands this week.
+        </p>
 
-      {missing.length === 0 ? null : (
-        <ul className="missing" data-testid="missing-list">
-          {missing.map((line) => (
-            <li key={line}>{line}</li>
-          ))}
-        </ul>
-      )}
+        {missing.length === 0 ? null : (
+          <ul className="missing" data-testid="missing-list">
+            {missing.map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
+        )}
 
-      <button
-        type="button"
-        disabled={missing.length > 0}
-        onClick={() => {
-          const next: ArcDoc = { ...doc, markedComplete: true };
-          onChange({ ...next, status: deriveStatus(next) });
-        }}
-      >
-        Mark complete
-      </button>
+        <button
+          type="button"
+          disabled={missing.length > 0}
+          onClick={() => {
+            const next: ArcDoc = { ...doc, markedComplete: true };
+            onChange({ ...next, status: deriveStatus(next) });
+          }}
+        >
+          Mark complete
+        </button>
+      </div>
     </div>
   );
 }
