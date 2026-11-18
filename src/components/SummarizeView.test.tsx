@@ -218,6 +218,11 @@ test("every field carries its guiding line, and Piper's levels are an example, n
   expect(example).toHaveTextContent("in order that you can honor him in your daily, bodily existence.");
   expect(example).toHaveTextContent("Piper, Romans 12:1-2 (pp. 23-24)");
   expect(example.querySelectorAll(".example-connector")).toHaveLength(2);
+  // Top level first, numbered 3 to 1, matching the level fields (RULED 2026-11-18).
+  const items = example.querySelectorAll("li");
+  expect(example.querySelector("ol")).toHaveAttribute("reversed");
+  expect(items[0]).toHaveTextContent("honor him");
+  expect(items[2]).toHaveTextContent("Be changed in the way you think");
   expect(screen.getByLabelText("Main point")).toHaveValue("");
   expect(screen.queryByLabelText("Level 1")).toBeNull();
 });

@@ -86,15 +86,20 @@ export function SummarizeView({ doc, onChange }: { doc: ArcDoc; onChange: (doc: 
             it is the part of a level a first summary most often leaves out.
           */}
           <figure className="worked-example" data-testid="worked-example">
-            <ol>
-              <li>Be changed in the way you think</li>
-              <li>
-                <span className="example-connector">in order that</span> you can heartily approve God&apos;s will,
-              </li>
+            {/*
+              Top level first, numbered 3 to 1 (RULED 2026-11-18), so the
+              example reads in the same direction as the level fields below
+              it, which also put the top level first.
+            */}
+            <ol reversed>
               <li>
                 <span className="example-connector">in order that</span> you can honor him in your daily, bodily
                 existence.
               </li>
+              <li>
+                <span className="example-connector">in order that</span> you can heartily approve God&apos;s will,
+              </li>
+              <li>Be changed in the way you think</li>
             </ol>
             <figcaption>Piper, Romans 12:1-2 (pp. 23-24)</figcaption>
           </figure>
