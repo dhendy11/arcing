@@ -52,8 +52,8 @@ test("the missing list names every unmet condition", () => {
     summary: { mainPoint: "   ", levels: [{ text: "", connector: "" }], whyItMatters: "" },
   });
   expect(completionMissing(doc)).toEqual([
-    "A main point sentence",
     "At least one level with text",
+    "A main point sentence",
     "A circled member on the Action-Purpose arc (a1)",
   ]);
 });

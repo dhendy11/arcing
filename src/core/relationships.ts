@@ -153,3 +153,30 @@ export function memberCountFit(rel: Relationship, n: number): { ok: boolean; rea
   if (rel.maxMembers === rel.minMembers) return { ok: false, reason: `Takes exactly ${rel.minMembers}` };
   return { ok: false, reason: `Takes ${rel.minMembers} to ${rel.maxMembers}` };
 }
+
+/** Cheat-sheet tokens that name a grammatical form, not a phrase a level can use. */
+const NOT_A_PHRASE = new Set(["participles", "question mark"]);
+
+export interface ConnectorChoice {
+  phrase: string;
+  relName: string;
+}
+
+/**
+ * The Summarize screen's connector dropdown (RULED 2026-11-16, option a):
+ * every conjunction from the 18 rows, grouped as the Relate palette groups
+ * them, each tagged with the relationship it signals. A phrase shared by two
+ * relationships ("so that") is listed under both, because which one it is
+ * depends on the arc. Free text still wins: this only fills the field.
+ */
+export function connectorChoices(): { heading: string; choices: ConnectorChoice[] }[] {
+  return GROUP_ORDER.map((group) => ({
+    heading: GROUP_HEADINGS[group],
+    choices: RELATIONSHIPS.filter((rel) => rel.group === group).flatMap((rel) =>
+      rel.conjunctions
+        .split(", ")
+        .filter((phrase) => !NOT_A_PHRASE.has(phrase))
+        .map((phrase) => ({ phrase, relName: rel.name }))
+    ),
+  }));
+}

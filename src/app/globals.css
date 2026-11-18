@@ -1038,6 +1038,29 @@ button {
   flex-basis: 100%;
 }
 
+/* Connector: free-text field with the conjunction dropdown beside it
+   (RULED 2026-11-16). The pair takes the full row the bare input used to. */
+.level .connector-field {
+  flex-basis: 100%;
+  display: flex;
+  gap: 8px;
+}
+
+.level .connector-field input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.level .connector-field select {
+  flex: 0 1 220px;
+  min-width: 0;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  padding: 8px;
+  background: var(--paper);
+  color: var(--ink);
+}
+
 .level button {
   border: 1px solid var(--rule);
   border-radius: 6px;

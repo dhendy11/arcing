@@ -207,14 +207,11 @@ test("the finished arc is on screen and view-only: no target on it can select or
 test("every field carries its guiding line, and Piper's levels are an example, never prefilled", () => {
   render(<SummarizeView doc={piperRomansDoc()} onChange={vi.fn()} />);
   expect(screen.getByLabelText("Main point")).toHaveAccessibleDescription(
-    "In one sentence: what the one arc over the whole passage says."
+    "In one sentence: the top of the stack, what the one arc over the whole passage says."
   );
   expect(screen.getByLabelText("Why it matters")).toHaveAccessibleDescription("One line: how this lands this week.");
-  expect(
-    screen.getByText(
-      "Start at the bottom (the most basic argument) and paraphrase each level up to the main conclusion. Put a connecting phrase between levels."
-    )
-  ).toBeInTheDocument();
+  expect(screen.getByText(INTRO_PURPOSE)).toBeInTheDocument();
+  expect(screen.getByText(INTRO_STEPS)).toBeInTheDocument();
   const example = screen.getByTestId("worked-example");
   expect(example).toHaveTextContent("Be changed in the way you think");
   expect(example).toHaveTextContent("in order that you can heartily approve God's will,");
@@ -223,4 +220,42 @@ test("every field carries its guiding line, and Piper's levels are an example, n
   expect(example.querySelectorAll(".example-connector")).toHaveLength(2);
   expect(screen.getByLabelText("Main point")).toHaveValue("");
   expect(screen.queryByLabelText("Level 1")).toBeNull();
+});
+
+const INTRO_PURPOSE =
+  "Purpose: retell the argument your arc shows, in your own words, so the main point comes out of how the passage stacks together.";
+const INTRO_STEPS =
+  "Steps: start at the bottom with the most basic level, paraphrase each level on the way up, and choose the connector that matches the relationship you labeled between them.";
+
+test("the levels come before the main point, and the main point before why it matters (RULED 2026-11-16)", () => {
+  render(<SummarizeView doc={piperRomansDoc()} onChange={vi.fn()} />);
+  const heading = screen.getByRole("heading", { name: "The argument, bottom to top" });
+  const main = screen.getByLabelText("Main point");
+  const why = screen.getByLabelText("Why it matters");
+  expect(heading.compareDocumentPosition(main) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(main.compareDocumentPosition(why) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+});
+
+test("choosing a connector from the dropdown fills the field, which stays free text", async () => {
+  const onChange = vi.fn();
+  render(
+    <SummarizeView
+      doc={{
+        ...piperRomansDoc(),
+        summary: {
+          mainPoint: "",
+          levels: [{ text: "bottom", connector: "" }, { text: "top", connector: "" }],
+          whyItMatters: "",
+        },
+      }}
+      onChange={onChange}
+    />
+  );
+  const select = screen.getByLabelText("Choose a connector above level 1");
+  expect(select.querySelectorAll("optgroup")).toHaveLength(4);
+  expect(screen.getByRole("option", { name: "therefore (Inference)" })).toBeInTheDocument();
+  await userEvent.selectOptions(select, "therefore (Inference)");
+  expect((onChange.mock.calls[0][0] as ArcDoc).summary.levels[0].connector).toBe("therefore");
+  // The topmost level still has no connector, so no dropdown either.
+  expect(screen.queryByLabelText("Choose a connector above level 2")).toBeNull();
 });

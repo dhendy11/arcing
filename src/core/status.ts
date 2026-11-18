@@ -12,8 +12,8 @@ const KNOWN_RELS = new Set(RELATIONSHIPS.map((r) => r.code));
 export function completionMissing(doc: ArcDoc): string[] {
   const missing: string[] = [];
   if (!isRooted(doc)) missing.push("One arc spanning the whole passage");
-  if (!doc.summary.mainPoint.trim()) missing.push("A main point sentence");
   if (!doc.summary.levels.some((l) => l.text.trim())) missing.push("At least one level with text");
+  if (!doc.summary.mainPoint.trim()) missing.push("A main point sentence");
   for (const arc of doc.arcs) {
     if (!KNOWN_RELS.has(arc.rel)) {
       missing.push(`A recognized relationship on the arc (${arc.id})`);

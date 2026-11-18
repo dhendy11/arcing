@@ -1,9 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { connectorChoices } from "@/core/relationships";
 import { completionMissing, deriveStatus } from "@/core/status";
 import type { ArcDoc, Level, Summary } from "@/core/types";
 import { ArcSvg } from "./ArcSvg";
+
+const CONNECTOR_GROUPS = connectorChoices();
 
 /** The topmost level has nothing above it, so its connector is always "". */
 function normalizeLevels(levels: Level[]): Level[] {
@@ -65,22 +68,16 @@ export function SummarizeView({ doc, onChange }: { doc: ArcDoc; onChange: (doc: 
       </div>
 
       <div className="summarize-screen">
-        <label htmlFor="main-point">Main point</label>
-        <input
-          id="main-point"
-          aria-describedby="main-point-hint"
-          value={doc.summary.mainPoint}
-          onChange={(e) => withSummary({ ...doc.summary, mainPoint: e.target.value })}
-        />
-        <p className="field-hint" id="main-point-hint">
-          In one sentence: what the one arc over the whole passage says.
-        </p>
-
         <section className="levels">
           <h2>The argument, bottom to top</h2>
+          {/* RULED 2026-11-16: a sentence or two on the purpose and the steps. */}
           <p className="field-hint">
-            Start at the bottom (the most basic argument) and paraphrase each level up to the main conclusion. Put
-            a connecting phrase between levels.
+            Purpose: retell the argument your arc shows, in your own words, so the main point comes out of how the
+            passage stacks together.
+          </p>
+          <p className="field-hint">
+            Steps: start at the bottom with the most basic level, paraphrase each level on the way up, and choose
+            the connector that matches the relationship you labeled between them.
           </p>
           {/*
             Piper's own levels for Romans 12:1-2, shown faint as a worked
@@ -121,13 +118,40 @@ export function SummarizeView({ doc, onChange }: { doc: ArcDoc; onChange: (doc: 
                 {index === levels.length - 1 ? null : (
                   <>
                     <label htmlFor={`connector-${index + 1}`}>{`Connector above level ${index + 1}`}</label>
-                    <input
-                      id={`connector-${index + 1}`}
-                      value={level.connector}
-                      onChange={(e) =>
-                        setLevels(levels.map((l, i) => (i === index ? { ...l, connector: e.target.value } : l)))
-                      }
-                    />
+                    <div className="connector-field">
+                      <input
+                        id={`connector-${index + 1}`}
+                        value={level.connector}
+                        onChange={(e) =>
+                          setLevels(levels.map((l, i) => (i === index ? { ...l, connector: e.target.value } : l)))
+                        }
+                      />
+                      {/*
+                        RULED 2026-11-16 (option a): a dropdown of the 18
+                        relationships' conjunctions that only FILLS the field.
+                        Held at "" so it always reads as a prompt and the
+                        typed field stays the one source of truth.
+                      */}
+                      <select
+                        aria-label={`Choose a connector above level ${index + 1}`}
+                        value=""
+                        onChange={(e) => {
+                          const phrase = e.target.value.replace(/ \(.*\)$/, "");
+                          setLevels(levels.map((l, i) => (i === index ? { ...l, connector: phrase } : l)));
+                        }}
+                      >
+                        <option value="">{"Choose\u2026"}</option>
+                        {CONNECTOR_GROUPS.map((group) => (
+                          <optgroup key={group.heading} label={group.heading}>
+                            {group.choices.map((c) => (
+                              <option key={`${c.phrase}-${c.relName}`} value={`${c.phrase} (${c.relName})`}>
+                                {`${c.phrase} (${c.relName})`}
+                              </option>
+                            ))}
+                          </optgroup>
+                        ))}
+                      </select>
+                    </div>
                   </>
                 )}
 
@@ -186,6 +210,23 @@ export function SummarizeView({ doc, onChange }: { doc: ArcDoc; onChange: (doc: 
             </div>
           </div>
         )}
+
+        {/*
+          RULED 2026-11-16: the main point comes AFTER the levels. The stack
+          is where it comes from (Piper p. 24, "from the bottom (most basic
+          argument) to the top (main conclusion)"), so writing it first would
+          let a first impression lead the structure.
+        */}
+        <label htmlFor="main-point">Main point</label>
+        <input
+          id="main-point"
+          aria-describedby="main-point-hint"
+          value={doc.summary.mainPoint}
+          onChange={(e) => withSummary({ ...doc.summary, mainPoint: e.target.value })}
+        />
+        <p className="field-hint" id="main-point-hint">
+          In one sentence: the top of the stack, what the one arc over the whole passage says.
+        </p>
 
         <label htmlFor="why">Why it matters</label>
         <input

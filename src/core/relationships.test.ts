@@ -1,5 +1,6 @@
 import { expect, test } from "vitest";
 import {
+  connectorChoices,
   CIRCLING_CODES,
   GROUP_ORDER,
   RELATIONSHIPS,
@@ -88,4 +89,23 @@ test("codes are unique and relationship() throws on an unknown code", () => {
   expect(new Set(RELATIONSHIPS.map((r) => r.code)).size).toBe(18);
   // @ts-expect-error deliberately outside RelCode
   expect(() => relationship("XX")).toThrow(/unknown relationship/);
+});
+
+test("connector choices come from each relationship's conjunctions, grouped, minus the non-words", () => {
+  const groups = connectorChoices();
+  expect(groups.map((g) => g.heading)).toEqual([
+    "Coordinate",
+    "Support by restatement",
+    "Support by distinct statement",
+    "Support by contrary statement",
+  ]);
+  const all = groups.flatMap((g) => g.choices);
+  expect(all).toContainEqual({ phrase: "therefore", relName: "Inference" });
+  expect(all).toContainEqual({ phrase: "in order that", relName: "Action-Purpose" });
+  expect(all).toContainEqual({ phrase: "so that", relName: "Action-Result" });
+  expect(all).toContainEqual({ phrase: "so that", relName: "Action-Purpose" });
+  // Cheat-sheet tokens that are not phrases a sentence can use.
+  expect(all.map((c) => c.phrase)).not.toContain("participles");
+  expect(all.map((c) => c.phrase)).not.toContain("question mark");
+  expect(all.some((c) => c.relName === "Question-Answer")).toBe(false);
 });
